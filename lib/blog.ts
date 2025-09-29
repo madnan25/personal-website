@@ -1,0 +1,129 @@
+export type BlogBlock =
+  | { type: 'heading'; level: 2 | 3; text: string }
+  | { type: 'paragraph'; text: string }
+  | { type: 'quote'; text: string };
+
+export interface BlogPost {
+  id: string; // slug
+  title: string;
+  description: string;
+  date: string; // ISO
+  readingMinutes: number;
+  content: BlogBlock[];
+}
+
+export const blogPosts: BlogPost[] = [
+  {
+    id: 'build-things-that-matter',
+    title: 'Build Things That Matter',
+    description:
+      'On using AI as an apprentice, shipping narrow tools that remove real pain, and measuring value with ruthless clarity.',
+    date: '2025-09-29',
+    readingMinutes: 9,
+    content: [
+      {
+        type: 'paragraph',
+        text:
+          'At fourteen I learned software the hard way: cheap shared hosting, hand-editing httpd.conf, breaking a site with one rewrite rule and staying up to fix it. Constraints were my first teachers. If I didn’t understand how something worked, it didn’t work.',
+      },
+      {
+        type: 'paragraph',
+        text:
+          'Then AWS turned infrastructure into a menu. I didn’t stop caring about the plumbing—I just spent more time on the product. We are at that kind of moment again. Only now the menu is automation. AI can sketch a system, draft code, and wire the basics while you are still talking to the user.',
+      },
+      {
+        type: 'paragraph',
+        text:
+          'People ask if AI replaces developers. Wrong question. In a good shop, AI is an apprentice. It sets the jigs and speeds the cut. We choose what to build and where the bar is.',
+      },
+      {
+        type: 'paragraph',
+        text:
+          'At Voortgang our rule is simple: build things that matter. That means removing real pain with narrow software, then stacking those wins until they look like a platform. No theater, no screenshots for applause. Usefulness people would miss if you took it away.',
+      },
+      { type: 'heading', level: 2, text: 'Small tools, big outcomes' },
+      { type: 'heading', level: 3, text: 'CareHub (tenant management without chaos)' },
+      {
+        type: 'paragraph',
+        text:
+          'We built a simple system for tenants and property teams—announcements, ticketing, a living knowledge base, and a clean escalation path. AI helps categorize issues, suggest responses, and surface duplicates so the team fixes once instead of ten times. Result: fewer WhatsApp fire drills and faster, cleaner resolutions.',
+      },
+      { type: 'heading', level: 3, text: 'Global digital awards voting (credibility first)' },
+      {
+        type: 'paragraph',
+        text:
+          'A voting system that handles nominations, identity checks, fraud detection, and a real-time, auditable tally. AI clusters suspicious patterns and flags anomalies for human review. What used to be a tangle of forms and spreadsheets became one trusted source of truth.',
+      },
+      { type: 'heading', level: 3, text: 'Marketing Portal (alignment that pays for itself)' },
+      {
+        type: 'paragraph',
+        text:
+          'One place for creative requests, C‑Suite visibility, and performance marketing. AI summarizes weekly changes, highlights outliers in spend and CPL, and generates tidy rollups for leadership. It helped drive a pipeline that converted $2M in sales in two months on $30k ad spend—not because it was flashy, but because everyone made decisions from the same sheet of music.',
+      },
+      {
+        type: 'paragraph',
+        text:
+          'AI did not “do” these projects. It let us shorten the loop: define the job, cut a walking path, ship a thin slice, learn, repeat. The scarce resource was not model quality; it was taste—choosing constraints and saying no to clever features that add surface area but no leverage.',
+      },
+      { type: 'heading', level: 2, text: 'What matters (my operating notes)' },
+      { type: 'paragraph', text: 'Clarity beats horsepower. If I can’t explain the job in one paragraph, I’m not ready to prompt anything.' },
+      { type: 'paragraph', text: 'Narrow beats general. Small, paid usefulness compounds faster than broad, free cleverness.' },
+      { type: 'paragraph', text: 'Edges create trust. Error states, permissions, handoffs. Decide them early.' },
+      { type: 'paragraph', text: 'Metrics must be boring. Minutes saved. Tickets deflected. Decisions sped up.' },
+      {
+        type: 'paragraph',
+        text:
+          'Thiel talks about “secrets” hiding in plain sight. Jobs insisted on ruthless constraints (“1,000 songs in your pocket”). Bezos banned slide decks because narrative exposes fuzzy thinking. I borrow all three: find the overlooked pain, box the problem tightly, and write the memo before I write the code.',
+      },
+      { type: 'heading', level: 2, text: 'From Value Proposition Canvas to Quantifiable Value' },
+      {
+        type: 'paragraph',
+        text:
+          'We keep the Value Proposition Canvas (VPC) on one page: Customer Jobs, Pains, Gains, and Products/Services → Pain Relievers / Gain Creators. Then we translate that into a Quantifiable Value Proposition (QVP)—a single sentence we can measure:',
+      },
+      {
+        type: 'quote',
+        text:
+          'For [segment], [tool] reduces/increases [metric] by [amount] within [timeframe] at [cost].',
+      },
+      { type: 'heading', level: 3, text: 'CareHub QVP (measured)' },
+      { type: 'paragraph', text: 'For property teams, CareHub reduces duplicate tickets and blind escalations, aiming for a lower median time‑to‑resolution and fewer off‑channel pings per week—tracked per building.' },
+      { type: 'heading', level: 3, text: 'Awards QVP (measured)' },
+      { type: 'paragraph', text: 'For awards organizers, our voting system improves vote integrity and auditability—targeting high verification rates, low anomaly flags, and instant, exportable tallies.' },
+      { type: 'heading', level: 3, text: 'Marketing Portal QVP (proven)' },
+      { type: 'paragraph', text: 'For growth teams, the portal lifts conversion by aligning creative and spend decisions—$2.6M in closed sales in 60 days on $30k ad spend in our own deployment.' },
+      {
+        type: 'paragraph',
+        text:
+          'The VPC keeps us honest about the job; the QVP forces a number we can defend. If a tool cannot earn a line on someone’s P&L, it is a toy.',
+      },
+      { type: 'heading', level: 2, text: 'How we ship faster now: assemble the known universe' },
+      { type: 'paragraph', text: 'Auth & roles: hosted auth or Postgres auth; supply a role matrix and let AI wire checks/tests.' },
+      { type: 'paragraph', text: 'Data layer: Postgres first; migrations from a schema doc; boring names win.' },
+      { type: 'paragraph', text: 'CRUD & tables: scaffold list/detail/edit with validation and empty states.' },
+      { type: 'paragraph', text: 'File storage: object storage + signed URLs.' },
+      { type: 'paragraph', text: 'Background jobs: queues for parsers, retries, webhooks, nightly rollups.' },
+      { type: 'paragraph', text: 'Integrations: start with one source of truth—CSV, API, or inbox—and normalize.' },
+      { type: 'paragraph', text: 'Retrieval for AI: keep models simple by feeding the right docs and examples.' },
+      { type: 'paragraph', text: 'Observability: log every automated decision; add audit trails day one.' },
+      { type: 'paragraph', text: 'Human‑in‑the‑loop: explicit escalation and a clean return path.' },
+      { type: 'paragraph', text: 'We are not reinventing frameworks; we are composing them with taste.' },
+      { type: 'heading', level: 2, text: 'The six-day loop (our default sprint)' },
+      { type: 'paragraph', text: 'Day 1 — Memo & map. Two pages: user, pain, “done,” anti‑goals. One sequence diagram.' },
+      { type: 'paragraph', text: 'Days 2–3 — Walking path. Auth, database, and one end‑to‑end flow with fake data.' },
+      { type: 'paragraph', text: 'Day 4 — Real data. Parse the export or hit the API. Delete the mock.' },
+      { type: 'paragraph', text: 'Day 5 — Edges. Errors, retries, permissions, logs, and human handoff.' },
+      { type: 'paragraph', text: 'Day 6 — Docs, demo, deploy. Ship to first users; record three changes for next week.' },
+      { type: 'paragraph', text: 'We pivot often, but pivoting is not flailing when the compass is steady: remove pain today, keep the system small, and let compounding do its work.' },
+      { type: 'heading', level: 2, text: 'Common objections' },
+      { type: 'paragraph', text: '“Isn’t this commoditized? Anyone can call the same model.” Yes—and irrelevant. The moat is intimacy with the workflow. Stand where the friction lives: the midnight CSV, the nine‑click vendor portal, the status meeting that should not exist. That is where wedges start.' },
+      { type: 'paragraph', text: '“Won’t AI make everyone equally fast?” Power tools amplify differences. With taste and proximity to the problem, you lap teams with larger budgets who are still pitching platforms no one asked for.' },
+      { type: 'heading', level: 2, text: 'The path to a unicorn' },
+      { type: 'paragraph', text: 'I want to build a unicorn—not for the label, but because unicorns emerge when usefulness compounds long enough. The shape is predictable: a stack of small tools that matter, glued together by taste, hardened by real edges, and proven with numbers. AI accelerates assembly; accountability and standards stay with us.' },
+      { type: 'paragraph', text: 'If you are building now, try this this week: sit with one user, write the paragraph that explains their job in plain language, map the VPC, convert it into a QVP, name the parts that already exist, and let AI assemble the first walking path. Ship the smallest thing that makes tomorrow easier. Then do it again.' },
+      { type: 'paragraph', text: 'Build things that matter. The rest follows.' },
+    ],
+  },
+];
+
+

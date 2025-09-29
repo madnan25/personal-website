@@ -1,0 +1,214 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+:root {
+  /* macOS Light Mode Colors */
+  --macos-bg-primary: #f5f5f7;
+  --macos-bg-secondary: #ffffff;
+  --macos-bg-tertiary: #f9f9fb;
+  --macos-surface: rgba(255, 255, 255, 0.8);
+  --macos-surface-elevated: rgba(255, 255, 255, 0.95);
+  
+  /* Text Colors */
+  --macos-text-primary: #1d1d1f;
+  --macos-text-secondary: #6e6e73;
+  --macos-text-tertiary: #86868b;
+  
+  /* Accent Colors (Premium Teal) */
+  --macos-accent: #089e93; /* premium teal */
+  --macos-accent-hover: #067e75; /* deeper on hover */
+  --macos-accent-secondary: #34c759;
+  
+  /* System Colors */
+  --macos-red: #ff3b30;
+  --macos-orange: #ff9500;
+  --macos-yellow: #ffcc02;
+  --macos-green: #34c759;
+  --macos-mint: #00c7be;
+  --macos-teal: #30b0c7;
+  --macos-cyan: #32d2ff;
+  --macos-blue: #007aff;
+  --macos-indigo: #5856d6;
+  --macos-purple: #af52de;
+  --macos-pink: #ff2d92;
+  --macos-brown: #a2845e;
+  
+  /* Borders & Separators */
+  --macos-separator: rgba(0, 0, 0, 0.1);
+  --macos-border: rgba(0, 0, 0, 0.15);
+  --macos-border-strong: rgba(0, 0, 0, 0.2);
+  
+  /* Shadows */
+  --macos-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --macos-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --macos-shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.2);
+  --macos-shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.25);
+  
+  /* Window Controls */
+  --macos-traffic-red: #ff5f56;
+  --macos-traffic-yellow: #ffbd2e;
+  --macos-traffic-green: #27ca3f;
+  
+  /* Glassmorphism */
+  --macos-glass-bg: rgba(255, 255, 255, 0.7);
+  --macos-glass-border: rgba(255, 255, 255, 0.2);
+
+  /* Sequoia MenuBar (light) */
+  --sequoia-menubar-bg: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.75) 0%,
+    rgba(255,255,255,0.55) 100%
+  );
+  --sequoia-menubar-tint: rgba(255,255,255,0.6);
+  --sequoia-menubar-separator: rgba(0,0,0,0.06);
+  --sequoia-menubar-shadow: 0 1px 0 rgba(255,255,255,0.35) inset;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* macOS Dark Mode Colors */
+    --macos-bg-primary: #1c1c1e;
+    --macos-bg-secondary: #2c2c2e;
+    --macos-bg-tertiary: #3a3a3c;
+    --macos-surface: rgba(44, 44, 46, 0.8);
+    --macos-surface-elevated: rgba(44, 44, 46, 0.95);
+    
+    /* Text Colors */
+    --macos-text-primary: #ffffff;
+    --macos-text-secondary: #ebebf5;
+    --macos-text-tertiary: #ebebf599;
+    
+    /* Borders & Separators */
+    --macos-separator: rgba(255, 255, 255, 0.1);
+    --macos-border: rgba(255, 255, 255, 0.15);
+    --macos-border-strong: rgba(255, 255, 255, 0.2);
+    
+    /* Glassmorphism */
+    --macos-glass-bg: rgba(44, 44, 46, 0.7);
+    --macos-glass-border: rgba(255, 255, 255, 0.1);
+
+    /* Accent Colors (Premium Teal) */
+    --macos-accent: #0ea79a; /* slightly darker in dark mode */
+    --macos-accent-hover: #0a8f85;
+
+    /* Sequoia MenuBar (dark) */
+    --sequoia-menubar-bg: linear-gradient(
+      to bottom,
+      rgba(28,28,30,0.65) 0%,
+      rgba(28,28,30,0.45) 100%
+    );
+    --sequoia-menubar-tint: rgba(28,28,30,0.55);
+    --sequoia-menubar-separator: rgba(255,255,255,0.08);
+    --sequoia-menubar-shadow: 0 1px 0 rgba(255,255,255,0.06) inset;
+  }
+}
+
+@theme inline {
+  --color-macos-bg-primary: var(--macos-bg-primary);
+  --color-macos-bg-secondary: var(--macos-bg-secondary);
+  --color-macos-surface: var(--macos-surface);
+  --color-macos-text-primary: var(--macos-text-primary);
+  --color-macos-text-secondary: var(--macos-text-secondary);
+  --color-macos-accent: var(--macos-accent);
+  --font-sans: 'Inter', var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* iOS Safari specific */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body {
+  background: var(--macos-bg-primary);
+  color: var(--macos-text-primary);
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-feature-settings: 'cv11', 'ss01';
+  font-variation-settings: 'opsz' 32;
+  overflow-x: hidden;
+  /* iOS Safari specific */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: none;
+}
+
+/* iOS-specific styles */
+@supports (-webkit-touch-callout: none) {
+  html {
+    height: -webkit-fill-available;
+  }
+  
+  body {
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* Remove iOS input styling */
+input, textarea, button {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* macOS-style scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--macos-separator);
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--macos-border);
+  background-clip: content-box;
+}
+
+/* macOS-style selection */
+::selection {
+  background: var(--macos-accent);
+  color: white;
+}
+
+/* Smooth transitions for theme switching */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+/* Animated shine for gradient text */
+@keyframes shine-move {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.shine-text {
+  background-image: linear-gradient(
+    90deg,
+    var(--macos-accent) 0%,
+    rgba(255,255,255,0.7) 50%,
+    var(--macos-teal) 100%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: shine-move 6s ease-in-out infinite;
+}
