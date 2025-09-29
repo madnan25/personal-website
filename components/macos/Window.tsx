@@ -89,7 +89,7 @@ export default function Window({
   const x = useMotionValue(initialPosition.x);
   const y = useMotionValue(initialPosition.y);
   const scale = useMotionValue(1);
-  const { width: winWidth, height: winHeight, isResizing, startResize, setWidth: setWinWidth, setHeight: setWinHeight } = useWindowResize({
+  const { width: winWidth, height: winHeight, isResizing, startResize } = useWindowResize({
     minWidth,
     minHeight,
     initialWidth: width,
@@ -222,12 +222,12 @@ export default function Window({
           targetX = Math.max(minX, Math.min(targetX, maxX));
           targetY = Math.max(minY, Math.min(targetY, maxY));
 
-          const updates: Array<Promise<any>> = [];
-          if (Math.abs(targetX - curX) > 0.5) updates.push(animate(x, targetX, { type: "spring", stiffness: 600, damping: 40 }));
-          if (Math.abs(targetY - curY) > 0.5) updates.push(animate(y, targetY, { type: "spring", stiffness: 600, damping: 40 }));
-          if (updates.length) Promise.all(updates);
+          const updates: Array<() => void> = [];
+          if (Math.abs(targetX - curX) > 0.5) updates.push(() => { animate(x, targetX, { type: "spring", stiffness: 600, damping: 40 }); });
+          if (Math.abs(targetY - curY) > 0.5) updates.push(() => { animate(y, targetY, { type: "spring", stiffness: 600, damping: 40 }); });
+          updates.forEach((fn) => fn());
         }}
-        onDragEnd={undefined}
+        
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", damping: 20, stiffness: 300 }}

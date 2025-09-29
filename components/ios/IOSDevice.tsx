@@ -135,7 +135,7 @@ function AboutApp() {
         <div>
           <h2 className="text-lg font-semibold text-gray-900 mb-2">About Me</h2>
           <p className="text-gray-700 leading-relaxed">
-            I'm a strategic design leader who bridges visionary marketing strategies with flawless technical execution. 
+            I&#39;m a strategic design leader who bridges visionary marketing strategies with flawless technical execution. 
             My passion lies in building premium digital experiences that drive measurable business impact.
           </p>
         </div>

@@ -95,12 +95,10 @@ export default function MenuBar({ className, hidden, onMouseLeave }: MenuBarProp
         className
       )}
       initial={{ y: -28 }}
-      animate={{ y: 0 }}
+      animate={{ y: hidden ? -28 : 0, opacity: hidden ? 0.9 : 1 }}
       transition={{ type: "spring", damping: 20, stiffness: 300 }}
       onMouseLeave={onMouseLeave}
       style={{ pointerEvents: hidden ? 'none' : 'auto' }}
-      animate={{ y: hidden ? -28 : 0, opacity: hidden ? 0.9 : 1 }}
-      transition={{ type: "spring", damping: 20, stiffness: 300 }}
     >
       {/* Left side - App menu */}
       <div className="flex items-center gap-1">

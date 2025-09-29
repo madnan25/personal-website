@@ -1,17 +1,17 @@
 "use client";
 
 import { Button } from "@heroui/react";
-import { motion } from "framer-motion";
+import { motion, cubicBezier } from "framer-motion";
 import Link from "next/link";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 32 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } },
-};
+  show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: cubicBezier(0.16, 1, 0.3, 1) } },
+} as const;
 
 const staggerContainer = {
   show: { transition: { staggerChildren: 0.12, delayChildren: 0.1 } },
-};
+} as const;
 
 export default function Hero() {
   return (
