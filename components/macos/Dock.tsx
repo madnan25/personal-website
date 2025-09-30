@@ -2,12 +2,14 @@
 
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { useEffect, useRef } from "react";
+import type { ReactNode } from "react";
 import { useDockContext } from "./DockContext";
 import { cn } from "@/lib/utils";
+import { User, Palette, Rocket, FileText, Mail, Settings, Trash2 } from "lucide-react";
 
 interface DockItemProps {
   id: string;
-  icon: string;
+  icon: ReactNode;
   label: string;
   onClick?: () => void;
   isActive?: boolean;
@@ -68,12 +70,12 @@ export default function Dock({ className, onItemClick, minimizedIds = [], hidden
   // const [, setHoveredItem] = useState<string | null>(null);
   
   const dockItems = [
-    { icon: "👤", label: "About", id: "about" },
-    { icon: "🎨", label: "Portfolio", id: "portfolio" },
-    { icon: "🚀", label: "Projects", id: "projects" },
-    { icon: "📝", label: "Blog", id: "blog" },
-    { icon: "📧", label: "Contact", id: "contact" },
-    { icon: "⚙️", label: "Settings", id: "settings" },
+    { icon: <User className="w-6 h-6" />, label: "About", id: "about" },
+    { icon: <Palette className="w-6 h-6" />, label: "Portfolio", id: "portfolio" },
+    { icon: <Rocket className="w-6 h-6" />, label: "Projects", id: "projects" },
+    { icon: <FileText className="w-6 h-6" />, label: "Blog", id: "blog" },
+    { icon: <Mail className="w-6 h-6" />, label: "Contact", id: "contact" },
+    { icon: <Settings className="w-6 h-6" />, label: "Settings", id: "settings" },
   ];
 
   const mouseX = useMotionValue(Infinity);
@@ -116,7 +118,7 @@ export default function Dock({ className, onItemClick, minimizedIds = [], hidden
         {/* Trash */}
         <DockItem
           id="trash"
-          icon="🗑️"
+          icon={<Trash2 className="w-6 h-6" />}
           label="Trash"
           onClick={() => onItemClick?.('trash')}
           isActive={false}
