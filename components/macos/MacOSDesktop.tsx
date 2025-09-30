@@ -43,12 +43,7 @@ function MacOSDesktopInner() {
   const handleTerminalMemoryChange = useCallback((m: { history: string[]; input: string }) => {
     setTerminalMemory(m);
   }, []);
-  const [aboutMemory, setAboutMemory] = useState<{ scrollTop: number }>({ scrollTop: 0 });
-  const [mediaMemory, setMediaMemory] = useState<{ isMuted: boolean; volume: number; playbackRate: number }>({
-    isMuted: false,
-    volume: 80,
-    playbackRate: 1,
-  });
+  // Removed unused per-window states in favor of shared scrollMemory and controlled renders
 
   const revealBars = () => {
     if (!isAnyMaximized) return;
@@ -125,7 +120,7 @@ function MacOSDesktopInner() {
       isOpen: false,
       isMinimized: false,
       position: { x: 100, y: 120 },
-      component: <TerminalWindow onRunCommand={(cmd) => runCommand(cmd)} onRequestClose={() => handleWindowClose('terminal')} />
+      component: null
     },
     {
       id: 'media',
@@ -160,9 +155,6 @@ function MacOSDesktopInner() {
       // Move opened window to end so it renders on top
       return [...others, updatedTarget];
     });
-    if (windowId === 'media' || windowId === 'terminal') {
-      setMinimized(ids => Array.from(new Set([...ids, windowId])));
-    }
   };
 
   const runCommand = (cmd: string) => {
@@ -218,9 +210,6 @@ function MacOSDesktopInner() {
     // Clear memory only on hard close
     if (windowId === 'blog') {
       setBlogMemory({ selectedId: null, scrollTop: 0 });
-    }
-    if (windowId === 'media' || windowId === 'terminal') {
-      setMinimized(ids => ids.filter(id => id !== windowId));
     }
     setScrollMemory(prev => ({ ...prev, [windowId]: 0 }));
     if (windowId === 'terminal') {
