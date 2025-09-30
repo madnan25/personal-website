@@ -6,6 +6,10 @@ import { cn } from "@/lib/utils";
 import Battery from "../macos/icons/Battery";
 import { useBattery } from "./hooks/useBattery";
 import AppleLogo from "../macos/icons/AppleLogo";
+// Shared styles for hoverable menu buttons to keep things consistent
+const MENU_BUTTON_BASE = "px-2.5 py-[3px] text-[13px] font-medium rounded-[6px] transition-colors duration-150";
+const MENU_BUTTON_HOVER = "hover:bg-[var(--macos-accent)]/15 hover:text-[var(--macos-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--macos-accent)]";
+
 
 interface MenuBarProps {
   className?: string;
@@ -25,10 +29,10 @@ const MenuBarItem = ({
 }) => (
   <motion.button
     className={cn(
-      "px-2.5 py-[3px] text-[13px] font-medium rounded-[6px] transition-colors duration-150",
+      MENU_BUTTON_BASE,
       isActive 
         ? "bg-[var(--macos-accent)] text-white" 
-        : "text-[var(--macos-text-primary)] hover:bg-[var(--macos-surface)]/60"
+        : cn("text-[var(--macos-text-primary)]", MENU_BUTTON_HOVER)
     )}
     onClick={onClick}
     whileHover={{ scale: 1.01 }}
@@ -46,7 +50,7 @@ const StatusItem = ({
   onClick?: () => void;
 }) => (
   <motion.button
-    className="px-2 py-[3px] text-[13px] text-[var(--macos-text-secondary)] hover:bg-[var(--macos-surface)]/60 rounded-[6px] transition-colors duration-150"
+    className="px-2 py-[3px] text-[13px] text-[var(--macos-text-secondary)] rounded-[6px] transition-colors duration-150"
     onClick={onClick}
     whileHover={{ scale: 1.01 }}
     whileTap={{ scale: 0.99 }}
@@ -104,7 +108,7 @@ export default function MenuBar({ className, hidden, onMouseLeave, onOpenWindow 
       {/* Left side - App menu */}
       <div className="flex items-center gap-1 relative">
         <motion.button
-          className="px-2.5 py-[3px] rounded-[6px] hover:bg-[var(--macos-surface)]/60 text-[13px]"
+          className={cn(MENU_BUTTON_BASE, MENU_BUTTON_HOVER)}
           onClick={() => setActiveMenu(activeMenu === 'apple' ? null : 'apple')}
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.99 }}
@@ -131,7 +135,7 @@ export default function MenuBar({ className, hidden, onMouseLeave, onOpenWindow 
         />
       </div>
 
-      {/* Right side - Status items */}
+      {/* Right side - Status items (no hover styling) */}
       <div className="flex items-center gap-1">
         <StatusItem>
           <div className="flex items-center gap-1 text-[12px]">
@@ -150,13 +154,13 @@ export default function MenuBar({ className, hidden, onMouseLeave, onOpenWindow 
       {activeMenu === 'apple' && !hidden && (
         <div className="absolute top-8 left-2 z-[60] min-w-[180px] bg-[var(--macos-surface-elevated)] border border-[var(--macos-glass-border)] shadow-xl rounded-md py-1 backdrop-blur-xl">
           <button
-            className="w-full text-left px-3 py-2 text-[13px] hover:bg-[var(--macos-surface)]/60 text-[var(--macos-text-primary)]"
+            className="w-full text-left px-3 py-2 text-[13px] rounded-[6px] hover:bg-[var(--macos-accent)]/15 hover:text-[var(--macos-accent)] text-[var(--macos-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--macos-accent)]"
             onClick={() => { onOpenWindow?.('settings'); setActiveMenu(null); }}
           >
             Settings
           </button>
           <button
-            className="w-full text-left px-3 py-2 text-[13px] hover:bg-[var(--macos-surface)]/60 text-[var(--macos-text-primary)]"
+            className="w-full text-left px-3 py-2 text-[13px] rounded-[6px] hover:bg-[var(--macos-accent)]/15 hover:text-[var(--macos-accent)] text-[var(--macos-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--macos-accent)]"
             onClick={() => { onOpenWindow?.('terminal'); setActiveMenu(null); }}
           >
             Terminal

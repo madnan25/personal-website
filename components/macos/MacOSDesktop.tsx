@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import DesktopWallpaper, { GradientBackground } from "./DesktopWallpaper";
 import MenuBar from "./MenuBar";
 import Dock from "./Dock";
@@ -11,7 +11,8 @@ import BlogTemplate from "@/components/blog/BlogTemplate";
 import { blogPosts } from "@/lib/blog";
 import { DockProvider, useDockContext } from "./DockContext";
 // import { cn } from "@/lib/utils";
-import { TerminalSquare } from "lucide-react";
+import { TerminalSquare, FileVideo } from "lucide-react";
+import MediaPlayer from "./MediaPlayer";
 
 interface WindowState {
   id: string;
@@ -91,14 +92,36 @@ function MacOSDesktopInner() {
     }
     ,
     {
+      id: 'trash',
+      title: 'Trash',
+      isOpen: false,
+      isMinimized: false,
+      position: { x: 140, y: 160 },
+      component: <TrashWindow onOpenMedia={() => openWindowById('media')} />
+    },
+    {
       id: 'terminal',
       title: 'Terminal',
       isOpen: false,
       isMinimized: false,
       position: { x: 100, y: 120 },
       component: <TerminalWindow onRunCommand={(cmd) => runCommand(cmd)} onRequestClose={() => handleWindowClose('terminal')} />
+    },
+    {
+      id: 'media',
+      title: 'QuickTime Player',
+      isOpen: false,
+      isMinimized: false,
+      position: { x: 180, y: 140 },
+      component: <MediaPlayer videoId="dQw4w9WgXcQ" />
     }
   ]);
+
+  // Keep a live ref of windows for handlers used inside child components
+  const windowsRef = useRef<WindowState[]>(windows);
+  useEffect(() => {
+    windowsRef.current = windows;
+  }, [windows]);
 
   const handleDockItemClick = (itemId: string) => {
     setWindows(prev => prev.map(w => ({
@@ -133,6 +156,14 @@ function MacOSDesktopInner() {
       if (target === 'terminal') {
         return "__EXIT__";
       }
+      const win = windowsRef.current.find(w => w.id === target);
+      if (!win) {
+        return `Unknown window: ${target}`;
+      }
+      // Consider minimized as open for closing semantics
+      if (!win.isOpen && !win.isMinimized) {
+        return `${target} is not open. Use 'open ${target}' to open it first.`;
+      }
       handleWindowClose(target);
       return `Closing ${target}...`;
     }
@@ -154,7 +185,7 @@ function MacOSDesktopInner() {
     setWindows(prev => 
       prev.map(window => 
         window.id === windowId 
-          ? { ...window, isOpen: false }
+          ? { ...window, isOpen: false, isMinimized: false }
           : window
       )
     );
@@ -566,4 +597,30 @@ function TerminalWindow({ onRunCommand, onRequestClose }: { onRunCommand: (cmd: 
     </div>
   );
 }
+
+function TrashWindow({ onOpenMedia }: { onOpenMedia: () => void }) {
+  return (
+    <div className="h-full p-4">
+      <div className="text-sm text-[var(--macos-text-secondary)] mb-3">Recently Deleted</div>
+      <div className="rounded-md border border-[var(--macos-border)] overflow-hidden">
+        <button
+          onClick={onOpenMedia}
+          className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--macos-surface)] transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <FileVideo className="w-5 h-5 text-[var(--macos-text-secondary)]" />
+            <div>
+              <div className="text-[var(--macos-text-primary)]">naughty video.mp4</div>
+              <div className="text-xs text-[var(--macos-text-secondary)]">MP4 · 3:33</div>
+            </div>
+          </div>
+          <div className="text-xs text-[var(--macos-text-secondary)]">Today</div>
+        </button>
+      </div>
+      <div className="mt-3 text-xs text-[var(--macos-text-tertiary)]">Click the file to open.</div>
+    </div>
+  );
+}
+
+// MediaPlayerWindow removed in favor of reusable MediaPlayer component
 
