@@ -8,6 +8,56 @@ interface MediaPlayerProps {
   className?: string;
 }
 
+// Minimal YouTube Iframe API typings for our usage
+interface YTPlayer {
+  playVideo: () => void;
+  pauseVideo: () => void;
+  seekTo: (seconds: number, allowSeekAhead: boolean) => void;
+  setVolume: (volume: number) => void;
+  setPlaybackRate: (rate: number) => void;
+  getCurrentTime?: () => number;
+  getDuration?: () => number;
+  isMuted?: () => boolean;
+  mute?: () => void;
+  unMute?: () => void;
+  destroy?: () => void;
+}
+
+interface YTPlayerEvent {
+  target: YTPlayer;
+  data?: number;
+}
+
+interface YTPlayerOptions {
+  videoId: string;
+  width: string | number;
+  height: string | number;
+  playerVars?: {
+    controls?: 0 | 1;
+    rel?: 0 | 1;
+    modestbranding?: 0 | 1;
+    iv_load_policy?: 1 | 3;
+    playsinline?: 0 | 1;
+    enablejsapi?: 0 | 1;
+    fs?: 0 | 1;
+  };
+  events?: {
+    onReady?: (e: YTPlayerEvent) => void;
+    onStateChange?: (e: YTPlayerEvent & { data: number }) => void;
+  };
+}
+
+interface YTNamespace {
+  Player: new (elementId: string | HTMLElement, options: YTPlayerOptions) => YTPlayer;
+}
+
+declare global {
+  interface Window {
+    YT?: YTNamespace;
+    onYouTubeIframeAPIReady?: () => void;
+  }
+}
+
 export default function MediaPlayer({ videoId, className }: MediaPlayerProps) {
   const containerId = `yt-player-${videoId}`;
   const [isPlaying, setIsPlaying] = useState(false);
@@ -16,12 +66,13 @@ export default function MediaPlayer({ videoId, className }: MediaPlayerProps) {
   const [playbackRate, setPlaybackRate] = useState(1);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const playerRef = useRef<any>(null);
+  const playerRef = useRef<YTPlayer | null>(null);
   const timerRef = useRef<number | null>(null);
+  const initialVolumeRef = useRef<number>(80);
 
   useEffect(() => {
     const createPlayer = () => {
-      const YT = (window as any).YT;
+      const YT = window.YT;
       if (!YT || !YT.Player) return;
       
       // Create player that fills the container
@@ -39,13 +90,13 @@ export default function MediaPlayer({ videoId, className }: MediaPlayerProps) {
           fs: 0,
         },
         events: {
-          onReady: (e: any) => {
-            e.target.setVolume(volume);
+          onReady: (e: YTPlayerEvent) => {
+            e.target.setVolume(initialVolumeRef.current);
             setDuration(e.target.getDuration ? e.target.getDuration() : 0);
             e.target.playVideo();
             setIsPlaying(true);
           },
-          onStateChange: (e: any) => {
+          onStateChange: (e: YTPlayerEvent & { data: number }) => {
             setIsPlaying(e.data === 1);
             if (playerRef.current?.getDuration) {
               setDuration(playerRef.current.getDuration() || 0);
@@ -55,11 +106,11 @@ export default function MediaPlayer({ videoId, className }: MediaPlayerProps) {
       });
     };
 
-    if ((window as any).YT && (window as any).YT.Player) createPlayer();
+    if (window.YT && window.YT.Player) createPlayer();
     else {
       const tag = document.createElement("script");
       tag.src = "https://www.youtube.com/iframe_api";
-      (window as any).onYouTubeIframeAPIReady = () => createPlayer();
+      window.onYouTubeIframeAPIReady = () => createPlayer();
       document.body.appendChild(tag);
     }
 
@@ -79,7 +130,7 @@ export default function MediaPlayer({ videoId, className }: MediaPlayerProps) {
       try { playerRef.current?.destroy?.(); } catch {}
       if (timerRef.current) { window.clearInterval(timerRef.current); timerRef.current = null; }
     };
-  }, [videoId]);
+  }, [videoId, containerId]);
 
   const playPause = () => {
     const p = playerRef.current; if (!p) return;
@@ -92,7 +143,14 @@ export default function MediaPlayer({ videoId, className }: MediaPlayerProps) {
   };
   const toggleMute = () => {
     const p = playerRef.current; if (!p) return;
-    if (p.isMuted && p.isMuted()) { p.unMute(); setIsMuted(false); } else { p.mute(); setIsMuted(true); }
+    const isCurrentlyMuted = typeof p.isMuted === 'function' ? !!p.isMuted() : false;
+    if (isCurrentlyMuted) {
+      p.unMute?.();
+      setIsMuted(false);
+    } else {
+      p.mute?.();
+      setIsMuted(true);
+    }
   };
   const changeVolume = (v: number) => {
     setVolume(v); const p = playerRef.current; if (!p) return; if (p.setVolume) p.setVolume(v);
@@ -102,7 +160,7 @@ export default function MediaPlayer({ videoId, className }: MediaPlayerProps) {
   };
 
   // Prevent window drag on all pointer events (capture phase to beat framer-motion)
-  const preventDragCapture = (e: any) => {
+  const preventDragCapture = (e: React.SyntheticEvent) => {
     e.stopPropagation();
   };
 
@@ -120,7 +178,7 @@ export default function MediaPlayer({ videoId, className }: MediaPlayerProps) {
   };
 
   return (
-    <div className="h-full w-full flex flex-col p-4">
+    <div className={["h-full w-full flex flex-col p-4", className].filter(Boolean).join(" ")}>
       {/* Video player - fills available space minus controls */}
       <div className="relative flex-1 bg-black rounded-lg overflow-hidden border border-[var(--macos-border)] shadow-2xl">
         {/* YouTube iframe will be injected here and styled to fill */}
