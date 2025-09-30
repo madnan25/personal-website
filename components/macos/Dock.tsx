@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { useDockContext } from "./DockContext";
 import { cn } from "@/lib/utils";
-import { User, Palette, Rocket, FileText, Mail, Settings, Trash2 } from "lucide-react";
+import { User, Palette, Rocket, FileText, Mail, Settings, Trash2, FileVideo, TerminalSquare } from "lucide-react";
 
 interface DockItemProps {
   id: string;
@@ -111,6 +111,28 @@ export default function Dock({ className, onItemClick, minimizedIds = [], hidden
             isActive={minimizedIds.includes(item.id)}
           />
         ))}
+
+        {/* Dynamic Media icon: appears when 'media' included in minimizedIds */}
+        {minimizedIds.includes('media') && (
+          <DockItem
+            id="media"
+            icon={<FileVideo className="w-6 h-6" />}
+            label="Media"
+            onClick={() => onItemClick?.('media')}
+            isActive={true}
+          />
+        )}
+
+        {/* Dynamic Terminal icon: appears when 'terminal' included in minimizedIds */}
+        {minimizedIds.includes('terminal') && (
+          <DockItem
+            id="terminal"
+            icon={<TerminalSquare className="w-6 h-6" />}
+            label="Terminal"
+            onClick={() => onItemClick?.('terminal')}
+            isActive={true}
+          />
+        )}
         
         {/* Separator */}
         <div className="w-px h-12 bg-[var(--macos-separator)] mx-1" />

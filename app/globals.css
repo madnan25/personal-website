@@ -212,3 +212,31 @@ input, textarea, button {
   color: transparent;
   animation: shine-move 6s ease-in-out infinite;
 }
+
+/*
+  Global macOS hover utilities
+  Usage:
+    - Add class "macos-hover" to any clickable element for teal hover background + text
+    - Add class "macos-hover-bordered" if you also want a subtle teal border on hover
+*/
+.macos-hover {
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.macos-hover:hover {
+  /* Approximate Tailwind bg-[var(--macos-accent)]/15 */
+  background-color: color-mix(in srgb, var(--macos-accent) 15%, transparent);
+  color: var(--macos-accent);
+}
+.macos-hover:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--macos-accent) 50%, transparent);
+}
+
+.macos-hover-bordered {
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  border-color: transparent;
+}
+.macos-hover-bordered:hover {
+  background-color: color-mix(in srgb, var(--macos-accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--macos-accent) 30%, transparent) !important;
+}

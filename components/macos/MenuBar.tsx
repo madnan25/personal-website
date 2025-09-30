@@ -8,7 +8,7 @@ import { useBattery } from "./hooks/useBattery";
 import AppleLogo from "../macos/icons/AppleLogo";
 // Shared styles for hoverable menu buttons to keep things consistent
 const MENU_BUTTON_BASE = "px-2.5 py-[3px] text-[13px] font-medium rounded-[6px] transition-colors duration-150";
-const MENU_BUTTON_HOVER = "hover:bg-[var(--macos-accent)]/15 hover:text-[var(--macos-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--macos-accent)]";
+const MENU_BUTTON_HOVER = "macos-hover";
 
 
 interface MenuBarProps {
@@ -154,13 +154,13 @@ export default function MenuBar({ className, hidden, onMouseLeave, onOpenWindow 
       {activeMenu === 'apple' && !hidden && (
         <div className="absolute top-8 left-2 z-[60] min-w-[180px] bg-[var(--macos-surface-elevated)] border border-[var(--macos-glass-border)] shadow-xl rounded-md py-1 backdrop-blur-xl">
           <button
-            className="w-full text-left px-3 py-2 text-[13px] rounded-[6px] hover:bg-[var(--macos-accent)]/15 hover:text-[var(--macos-accent)] text-[var(--macos-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--macos-accent)]"
+            className="w-full text-left px-3 py-2 text-[13px] rounded-[6px] macos-hover text-[var(--macos-text-primary)]"
             onClick={() => { onOpenWindow?.('settings'); setActiveMenu(null); }}
           >
             Settings
           </button>
           <button
-            className="w-full text-left px-3 py-2 text-[13px] rounded-[6px] hover:bg-[var(--macos-accent)]/15 hover:text-[var(--macos-accent)] text-[var(--macos-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--macos-accent)]"
+            className="w-full text-left px-3 py-2 text-[13px] rounded-[6px] macos-hover text-[var(--macos-text-primary)]"
             onClick={() => { onOpenWindow?.('terminal'); setActiveMenu(null); }}
           >
             Terminal

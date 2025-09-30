@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
 import DesktopWallpaper, { GradientBackground } from "./DesktopWallpaper";
 import MenuBar from "./MenuBar";
 import Dock from "./Dock";
@@ -29,6 +29,26 @@ function MacOSDesktopInner() {
   const [isTopHover, setIsTopHover] = useState<boolean>(false);
   const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
   const REVEAL_STRIP_HEIGHT_PX = 14; // increase hover activation area
+
+  // Window memory: persists while window is minimized, resets on close
+  const [blogMemory, setBlogMemory] = useState<{ selectedId: string | null; scrollTop: number }>({
+    selectedId: null,
+    scrollTop: 0,
+  });
+  const [scrollMemory, setScrollMemory] = useState<Record<string, number>>({});
+  const [terminalMemory, setTerminalMemory] = useState<{ history: string[]; input: string }>({
+    history: ["Welcome to mdadnan ~ Terminal. Type 'help' to get started."],
+    input: '',
+  });
+  const handleTerminalMemoryChange = useCallback((m: { history: string[]; input: string }) => {
+    setTerminalMemory(m);
+  }, []);
+  const [aboutMemory, setAboutMemory] = useState<{ scrollTop: number }>({ scrollTop: 0 });
+  const [mediaMemory, setMediaMemory] = useState<{ isMuted: boolean; volume: number; playbackRate: number }>({
+    isMuted: false,
+    volume: 80,
+    playbackRate: 1,
+  });
 
   const revealBars = () => {
     if (!isAnyMaximized) return;
@@ -72,7 +92,7 @@ function MacOSDesktopInner() {
       isOpen: false,
       isMinimized: false,
       position: { x: 180, y: 160 },
-      component: <BlogWindow />
+      component: null // rendered with controlled props below
     },
     {
       id: 'contact',
@@ -140,6 +160,9 @@ function MacOSDesktopInner() {
       // Move opened window to end so it renders on top
       return [...others, updatedTarget];
     });
+    if (windowId === 'media' || windowId === 'terminal') {
+      setMinimized(ids => Array.from(new Set([...ids, windowId])));
+    }
   };
 
   const runCommand = (cmd: string) => {
@@ -192,6 +215,17 @@ function MacOSDesktopInner() {
     // Restore global UI when closing a full-screen window
     setIsAnyMaximized(false);
     setIsTopHover(false);
+    // Clear memory only on hard close
+    if (windowId === 'blog') {
+      setBlogMemory({ selectedId: null, scrollTop: 0 });
+    }
+    if (windowId === 'media' || windowId === 'terminal') {
+      setMinimized(ids => ids.filter(id => id !== windowId));
+    }
+    setScrollMemory(prev => ({ ...prev, [windowId]: 0 }));
+    if (windowId === 'terminal') {
+      setTerminalMemory({ history: ["Welcome to mdadnan ~ Terminal. Type 'help' to get started."], input: '' });
+    }
     const dock = document.querySelector('[data-role="macos-dock"]') as HTMLElement | null;
     if (dock) dock.style.zIndex = '50';
   };
@@ -270,7 +304,55 @@ function MacOSDesktopInner() {
               });
             }}
           >
-            {window.component}
+            {window.id === 'blog' ? (
+              <BlogWindow 
+                selectedId={blogMemory.selectedId}
+                onSelectedIdChange={(id) => setBlogMemory(prev => ({ ...prev, selectedId: id }))}
+                scrollTop={blogMemory.scrollTop}
+                onScrollTopChange={(t) => setBlogMemory(prev => ({ ...prev, scrollTop: t }))}
+              />
+            ) : window.id === 'about' ? (
+              <AboutWindow 
+                initialScrollTop={scrollMemory['about'] ?? 0}
+                onScrollTopChange={(t) => setScrollMemory(prev => ({ ...prev, about: t }))}
+              />
+            ) : window.id === 'settings' ? (
+              <SettingsWindow 
+                onSetWallpaper={setWallpaperSrc}
+                initialScrollTop={scrollMemory['settings'] ?? 0}
+                onScrollTopChange={(t) => setScrollMemory(prev => ({ ...prev, settings: t }))}
+              />
+            ) : window.id === 'portfolio' ? (
+              <PlaceholderWindow 
+                title="Portfolio"
+                initialScrollTop={scrollMemory['portfolio'] ?? 0}
+                onScrollTopChange={(t) => setScrollMemory(prev => ({ ...prev, portfolio: t }))}
+              />
+            ) : window.id === 'projects' ? (
+              <PlaceholderWindow 
+                title="Projects"
+                initialScrollTop={scrollMemory['projects'] ?? 0}
+                onScrollTopChange={(t) => setScrollMemory(prev => ({ ...prev, projects: t }))}
+              />
+            ) : window.id === 'contact' ? (
+              <PlaceholderWindow 
+                title="Contact"
+                initialScrollTop={scrollMemory['contact'] ?? 0}
+                onScrollTopChange={(t) => setScrollMemory(prev => ({ ...prev, contact: t }))}
+              />
+            ) : window.id === 'terminal' ? (
+              <TerminalWindow 
+                onRunCommand={(cmd) => runCommand(cmd)} 
+                onRequestClose={() => handleWindowClose('terminal')}
+                initialScrollTop={scrollMemory['terminal'] ?? 0}
+                onScrollTopChange={(t) => setScrollMemory(prev => ({ ...prev, terminal: t }))}
+                initialHistory={terminalMemory.history}
+                initialInput={terminalMemory.input}
+                onMemoryChange={handleTerminalMemoryChange}
+              />
+            ) : (
+              window.component
+            )}
           </Window>
         )
       )}
@@ -278,7 +360,7 @@ function MacOSDesktopInner() {
       {/* Dock */}
       <Dock 
         onItemClick={handleDockItemClick}
-        minimizedIds={windows.filter(w => w.isMinimized).map(w => w.id)}
+        minimizedIds={windows.filter(w => w.isMinimized || ((w.id === 'media' || w.id === 'terminal') && w.isOpen)).map(w => w.id)}
         hidden={isAnyMaximized}
       />
     </div>
@@ -294,50 +376,32 @@ export default function MacOSDesktop() {
 }
 
 // About Window Content Component
-function AboutWindow() {
+function AboutWindow({ initialScrollTop = 0, onScrollTopChange }: { initialScrollTop?: number; onScrollTopChange?: (t: number) => void; }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = initialScrollTop;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
-    <div className="p-8 h-full overflow-auto">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="max-w-4xl"
-      >
+    <div ref={containerRef} className="p-8 h-full overflow-auto" onScroll={(e) => onScrollTopChange?.((e.target as HTMLDivElement).scrollTop)}>
+      <motion.div className="max-w-4xl">
         {/* Header */}
         <div className="mb-8">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
-            className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 mb-6 flex items-center justify-center"
-          >
+          <motion.div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 mb-6 flex items-center justify-center">
             <UserIcon className="w-12 h-12 text-white" />
           </motion.div>
           
-          <motion.h1
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3, duration: 0.5 }}
-            className="text-4xl font-light text-[var(--macos-text-primary)] mb-3"
-          >
+          <motion.h1 className="text-4xl font-light text-[var(--macos-text-primary)] mb-3">
             Mohammad Dayem Adnan
           </motion.h1>
           
-          <motion.p
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.4, duration: 0.5 }}
-            className="text-xl text-[var(--macos-text-secondary)] mb-4"
-          >
+          <motion.p className="text-xl text-[var(--macos-text-secondary)] mb-4">
             I build teams, products, and repeatable wins.
           </motion.p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.5 }}
-            className="flex flex-wrap gap-2 mb-8"
-          >
+          <motion.div className="flex flex-wrap gap-2 mb-8">
                   {['CMO', 'Founder', 'Head of Delivery'].map((role) => (
               <span 
                 key={role}
@@ -350,12 +414,7 @@ function AboutWindow() {
         </div>
 
         {/* Content */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.5 }}
-          className="space-y-8"
-        >
+        <motion.div className="space-y-8">
           <div>
             <h2 className="text-2xl font-semibold text-[var(--macos-text-primary)] mb-3">
               About me
@@ -463,7 +522,12 @@ function AboutWindow() {
   );
 }
 
-function SettingsWindow({ onSetWallpaper }: { onSetWallpaper: (src: string) => void }) {
+function SettingsWindow({ onSetWallpaper, initialScrollTop = 0, onScrollTopChange }: { onSetWallpaper: (src: string) => void; initialScrollTop?: number; onScrollTopChange?: (t: number) => void; }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (containerRef.current) containerRef.current.scrollTop = initialScrollTop;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const wallpapers = [
     { src: "/luffy-neon.jpg", label: "Neon Luffy" },
     { src: "/eagle-forest.jpg", label: "Eagle Forest" },
@@ -472,7 +536,7 @@ function SettingsWindow({ onSetWallpaper }: { onSetWallpaper: (src: string) => v
     { src: "gradient:sonoma", label: "Gradient – Sonoma" },
   ];
   return (
-    <div className="p-4 h-full overflow-auto">
+    <div ref={containerRef} className="p-4 h-full overflow-auto" onScroll={(e) => onScrollTopChange?.((e.target as HTMLDivElement).scrollTop)}>
       <div className="space-y-4">
         <div>
           <div className="text-sm font-medium mb-2">Wallpaper</div>
@@ -502,18 +566,30 @@ function SettingsWindow({ onSetWallpaper }: { onSetWallpaper: (src: string) => v
   );
 }
 
-function PlaceholderWindow({ title }: { title: string }) {
+function PlaceholderWindow({ title, initialScrollTop = 0, onScrollTopChange }: { title: string; initialScrollTop?: number; onScrollTopChange?: (t: number) => void; }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (containerRef.current) containerRef.current.scrollTop = initialScrollTop;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
-    <div className="p-6">
+    <div ref={containerRef} className="p-6 h-full overflow-auto" onScroll={(e) => onScrollTopChange?.((e.target as HTMLDivElement).scrollTop)}>
       <div className="text-lg font-medium mb-2">{title}</div>
       <div className="text-sm text-[var(--macos-text-secondary)]">Coming soon.</div>
     </div>
   );
 }
 
-function BlogWindow() {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChange }: { selectedId: string | null; onSelectedIdChange: (id: string) => void; scrollTop: number; onScrollTopChange: (t: number) => void; }) {
   const selected = blogPosts.find((p) => p.id === selectedId) ?? null;
+  const mainRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTop = scrollTop || 0;
+    }
+    // run only on mount to restore position
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <div className="h-full flex">
       <aside className="w-64 border-r border-[var(--macos-border)] p-4 space-y-3 overflow-auto">
@@ -523,11 +599,11 @@ function BlogWindow() {
           return (
             <button
               key={post.id}
-              onClick={() => setSelectedId(post.id)}
+              onClick={() => onSelectedIdChange(post.id)}
               className={`w-full text-left rounded-md p-3 transition-colors ${
                 isActive
                   ? 'bg-[var(--macos-accent)]/10 border border-[var(--macos-accent)]/30'
-                  : 'hover:bg-[var(--macos-surface)] border border-transparent'
+                  : 'macos-hover-bordered border'
               }`}
             >
               <div className="text-sm font-medium text-[var(--macos-text-primary)]">{post.title}</div>
@@ -536,7 +612,7 @@ function BlogWindow() {
           );
         })}
       </aside>
-      <main className="flex-1 p-6 overflow-auto">
+      <main ref={mainRef} className="flex-1 p-6 overflow-auto" onScroll={(e) => onScrollTopChange((e.target as HTMLDivElement).scrollTop)}>
         {!selected ? (
           <div className="h-full flex items-center justify-center">
             <div className="text-center text-[var(--macos-text-secondary)]">
@@ -552,10 +628,11 @@ function BlogWindow() {
   );
 }
 
-function TerminalWindow({ onRunCommand, onRequestClose }: { onRunCommand: (cmd: string) => string; onRequestClose?: () => void }) {
-  const [history, setHistory] = useState<string[]>(["Welcome to mdadnan ~ Terminal. Type 'help' to get started."]);
-  const [input, setInput] = useState<string>("");
+function TerminalWindow({ onRunCommand, onRequestClose, initialScrollTop = 0, onScrollTopChange, initialHistory, initialInput, onMemoryChange }: { onRunCommand: (cmd: string) => string; onRequestClose?: () => void; initialScrollTop?: number; onScrollTopChange?: (t: number) => void; initialHistory: string[]; initialInput: string; onMemoryChange: (m: { history: string[]; input: string }) => void; }) {
+  const [history, setHistory] = useState<string[]>(initialHistory);
+  const [input, setInput] = useState<string>(initialInput);
   const inputRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -572,10 +649,21 @@ function TerminalWindow({ onRunCommand, onRequestClose }: { onRunCommand: (cmd: 
     setTimeout(() => inputRef.current?.focus(), 0);
   };
 
+  useLayoutEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = initialScrollTop;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    onMemoryChange({ history, input });
+    // We intentionally avoid depending on the callback reference to prevent loops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [history, input]);
+
   return (
     <div className="h-full bg-black text-green-200 font-mono text-sm">
       <div className="h-full flex flex-col">
-        <div className="flex-1 overflow-auto p-3 space-y-1">
+        <div ref={scrollRef} className="flex-1 overflow-auto p-3 space-y-1" onScroll={(e) => onScrollTopChange?.((e.target as HTMLDivElement).scrollTop)}>
           {history.map((line, idx) => (
             <div key={idx} className="whitespace-pre-wrap">{line}</div>
           ))}
@@ -605,7 +693,7 @@ function TrashWindow({ onOpenMedia }: { onOpenMedia: () => void }) {
       <div className="rounded-md border border-[var(--macos-border)] overflow-hidden">
         <button
           onClick={onOpenMedia}
-          className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--macos-surface)] transition-colors"
+          className="w-full flex items-center justify-between px-4 py-3 text-left macos-hover transition-colors"
         >
           <div className="flex items-center gap-3">
             <FileVideo className="w-5 h-5 text-[var(--macos-text-secondary)]" />

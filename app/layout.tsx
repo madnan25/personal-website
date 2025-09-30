@@ -14,8 +14,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MD Adnan - Strategic Design Leader",
-  description: "Strategic Design Leader, CMO, Founder & Head of Delivery. Bridging visionary marketing strategies with flawless technical execution.",
+  title: "Mohammad Dayem Adnan — Builder of teams, products, and wins",
+  description: "I build teams, products, and repeatable wins. CMO at The Vertical, Founder at Voortgang, and Head of Delivery at NettaWorks—combining design thinking and ruthless prioritization to deliver results.",
+  openGraph: {
+    title: "Mohammad Dayem Adnan — Builder of teams, products, and wins",
+    description: "I build teams, products, and repeatable wins. CMO at The Vertical, Founder at Voortgang, and Head of Delivery at NettaWorks—combining design thinking and ruthless prioritization to deliver results.",
+    type: "website",
+    url: "https://mdadnan.com/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Mohammad Dayem Adnan — Builder of teams, products, and wins",
+    description: "I build teams, products, and repeatable wins. CMO at The Vertical, Founder at Voortgang, and Head of Delivery at NettaWorks—combining design thinking and ruthless prioritization to deliver results.",
+  },
 };
 
 export const viewport = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover";
