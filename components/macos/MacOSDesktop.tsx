@@ -349,7 +349,7 @@ function MacOSDesktopInner() {
       {/* Dock */}
       <Dock 
         onItemClick={handleDockItemClick}
-        minimizedIds={windows.filter(w => w.isMinimized || ((w.id === 'media' || w.id === 'terminal') && w.isOpen)).map(w => w.id)}
+        minimizedIds={windows.filter(w => w.isOpen || w.isMinimized).map(w => w.id)}
         hidden={isAnyMaximized}
       />
     </div>
