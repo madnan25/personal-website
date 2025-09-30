@@ -11,6 +11,7 @@ interface MenuBarProps {
   className?: string;
   hidden?: boolean;
   onMouseLeave?: () => void;
+  onOpenWindow?: (id: string) => void;
 }
 
 const MenuBarItem = ({ 
@@ -54,7 +55,7 @@ const StatusItem = ({
   </motion.button>
 );
 
-export default function MenuBar({ className, hidden, onMouseLeave }: MenuBarProps) {
+export default function MenuBar({ className, hidden, onMouseLeave, onOpenWindow }: MenuBarProps) {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const battery = useBattery();
@@ -97,11 +98,11 @@ export default function MenuBar({ className, hidden, onMouseLeave }: MenuBarProp
       initial={{ y: -28 }}
       animate={{ y: hidden ? -28 : 0, opacity: hidden ? 0.9 : 1 }}
       transition={{ type: "spring", damping: 20, stiffness: 300 }}
-      onMouseLeave={onMouseLeave}
+      onMouseLeave={() => { setActiveMenu(null); onMouseLeave?.(); }}
       style={{ pointerEvents: hidden ? 'none' : 'auto' }}
     >
       {/* Left side - App menu */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 relative">
         <motion.button
           className="px-2.5 py-[3px] rounded-[6px] hover:bg-[var(--macos-surface)]/60 text-[13px]"
           onClick={() => setActiveMenu(activeMenu === 'apple' ? null : 'apple')}
@@ -144,6 +145,24 @@ export default function MenuBar({ className, hidden, onMouseLeave }: MenuBarProp
           </div>
         </StatusItem>
       </div>
+
+      {/* Apple dropdown */}
+      {activeMenu === 'apple' && !hidden && (
+        <div className="absolute top-8 left-2 z-[60] min-w-[180px] bg-[var(--macos-surface-elevated)] border border-[var(--macos-glass-border)] shadow-xl rounded-md py-1 backdrop-blur-xl">
+          <button
+            className="w-full text-left px-3 py-2 text-[13px] hover:bg-[var(--macos-surface)]/60 text-[var(--macos-text-primary)]"
+            onClick={() => { onOpenWindow?.('settings'); setActiveMenu(null); }}
+          >
+            Settings
+          </button>
+          <button
+            className="w-full text-left px-3 py-2 text-[13px] hover:bg-[var(--macos-surface)]/60 text-[var(--macos-text-primary)]"
+            onClick={() => { onOpenWindow?.('terminal'); setActiveMenu(null); }}
+          >
+            Terminal
+          </button>
+        </div>
+      )}
     </motion.div>
   );
 }

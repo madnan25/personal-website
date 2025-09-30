@@ -11,6 +11,7 @@ import BlogTemplate from "@/components/blog/BlogTemplate";
 import { blogPosts } from "@/lib/blog";
 import { DockProvider, useDockContext } from "./DockContext";
 // import { cn } from "@/lib/utils";
+import { TerminalSquare } from "lucide-react";
 
 interface WindowState {
   id: string;
@@ -88,6 +89,15 @@ function MacOSDesktopInner() {
       position: { x: 80, y: 80 },
       component: <SettingsWindow onSetWallpaper={setWallpaperSrc} />
     }
+    ,
+    {
+      id: 'terminal',
+      title: 'Terminal',
+      isOpen: false,
+      isMinimized: false,
+      position: { x: 100, y: 120 },
+      component: <TerminalWindow onRunCommand={(cmd) => runCommand(cmd)} onRequestClose={() => handleWindowClose('terminal')} />
+    }
   ]);
 
   const handleDockItemClick = (itemId: string) => {
@@ -96,6 +106,46 @@ function MacOSDesktopInner() {
       isOpen: w.id === itemId ? true : w.isOpen,
       isMinimized: w.id === itemId ? false : w.isMinimized,
     })));
+  };
+
+  const openWindowById = (windowId: string) => {
+    setWindows(prev => {
+      const target = prev.find(w => w.id === windowId);
+      if (!target) return prev;
+      const others = prev.filter(w => w.id !== windowId);
+      const updatedTarget = { ...target, isOpen: true, isMinimized: false };
+      // Move opened window to end so it renders on top
+      return [...others, updatedTarget];
+    });
+  };
+
+  const runCommand = (cmd: string) => {
+    const trimmed = cmd.trim();
+    const openMatch = /^open\s+(about|portfolio|projects|blog|contact|settings)$/i.exec(trimmed);
+    if (openMatch) {
+      const target = openMatch[1].toLowerCase();
+      openWindowById(target);
+      return `Opening ${target}...`;
+    }
+    const closeMatch = /^(?:exit|close)\s+(about|portfolio|projects|blog|contact|settings|terminal)$/i.exec(trimmed);
+    if (closeMatch) {
+      const target = closeMatch[1].toLowerCase();
+      if (target === 'terminal') {
+        return "__EXIT__";
+      }
+      handleWindowClose(target);
+      return `Closing ${target}...`;
+    }
+    if (/^(exit|close)$/i.test(trimmed)) {
+      return "__EXIT__";
+    }
+    if (/^help$/i.test(trimmed)) {
+      return "Commands: help, clear, open <about|portfolio|projects|blog|contact|settings>, close <window>, exit <window>";
+    }
+    if (/^clear$/i.test(trimmed)) {
+      return "__CLEAR__";
+    }
+    return `command not found: ${trimmed}`;
   };
 
   const { getEl, setMinimized } = useDockContext();
@@ -149,12 +199,12 @@ function MacOSDesktopInner() {
       <div 
         className="fixed inset-x-0 top-0 z-[60]"
       >
-        <MenuBar hidden={isAnyMaximized && !isTopHover} onMouseLeave={hideBarsWithDelay} />
+        <MenuBar hidden={isAnyMaximized && !isTopHover} onMouseLeave={hideBarsWithDelay} onOpenWindow={(id) => openWindowById(id)} />
       </div>
       
       {/* Windows */}
       {windows.map(window => 
-        window.isOpen && !window.isMinimized && getEl(window.id) && (
+        window.isOpen && !window.isMinimized && (
           <Window
             key={window.id}
             title={window.title}
@@ -168,7 +218,7 @@ function MacOSDesktopInner() {
               setIsAnyMaximized(isMax);
               if (!isMax) setIsTopHover(false);
             }}
-            minimizeTargetEl={getEl(window.id)}
+            minimizeTargetEl={getEl(window.id) ?? undefined}
             showTopChrome={!isAnyMaximized || isTopHover}
             topOffsetPx={32}
             onTitleBarHoverChange={(hover) => {
@@ -179,6 +229,14 @@ function MacOSDesktopInner() {
               } else {
                 hideBarsWithDelay();
               }
+            }}
+            onFocus={() => {
+              setWindows(prev => {
+                const target = prev.find(w => w.id === window.id);
+                if (!target) return prev;
+                const others = prev.filter(w => w.id !== window.id);
+                return [...others, target];
+              });
             }}
           >
             {window.component}
@@ -459,6 +517,52 @@ function BlogWindow() {
           <BlogTemplate post={selected} />
         )}
       </main>
+    </div>
+  );
+}
+
+function TerminalWindow({ onRunCommand, onRequestClose }: { onRunCommand: (cmd: string) => string; onRequestClose?: () => void }) {
+  const [history, setHistory] = useState<string[]>(["Welcome to mdadnan ~ Terminal. Type 'help' to get started."]);
+  const [input, setInput] = useState<string>("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+    const result = onRunCommand(input);
+    if (result === "__CLEAR__") {
+      setHistory([]);
+    } else if (result === "__EXIT__") {
+      onRequestClose?.();
+    } else {
+      setHistory((prev) => [...prev, `$ ${input}`, result]);
+    }
+    setInput("");
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  return (
+    <div className="h-full bg-black text-green-200 font-mono text-sm">
+      <div className="h-full flex flex-col">
+        <div className="flex-1 overflow-auto p-3 space-y-1">
+          {history.map((line, idx) => (
+            <div key={idx} className="whitespace-pre-wrap">{line}</div>
+          ))}
+        </div>
+        <form onSubmit={handleSubmit} className="border-t border-white/10">
+          <div className="flex items-center gap-2 p-2">
+            <span className="text-green-400"><TerminalSquare className="inline w-4 h-4 mr-1" /> mdadnan ~ %</span>
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              className="flex-1 bg-transparent outline-none text-green-200 placeholder:text-green-800"
+              placeholder="Type a command... (e.g., open about)"
+              autoFocus
+            />
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

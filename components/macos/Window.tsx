@@ -23,6 +23,7 @@ interface WindowProps {
   showTopChrome?: boolean;
   topOffsetPx?: number;
   onTitleBarHoverChange?: (hover: boolean) => void;
+  onFocus?: () => void;
 }
 
 const TrafficLight = ({ 
@@ -81,6 +82,7 @@ export default function Window({
   showTopChrome = true,
   topOffsetPx = 32,
   onTitleBarHoverChange,
+  onFocus,
 }: WindowProps) {
   const MENU_BAR_HEIGHT_PX = 32; // matches h-8 in MenuBar
   const TITLE_BAR_HEIGHT_PX = 40; // matches h-10 in title bar
@@ -178,6 +180,7 @@ export default function Window({
           "z-[50]",
           className
         )}
+        onMouseDown={() => onFocus?.()}
         style={{
           width: isMaximized ? '100vw' : winWidth,
           height: isMaximized ? (showTopChrome ? `calc(100vh - ${topOffsetPx}px)` : '100vh') : winHeight,
