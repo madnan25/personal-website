@@ -8,6 +8,7 @@ type ContactPayload = {
   email: string;
   phone?: string;
   subject: 'speaking' | 'work' | 'other';
+  message?: string;
 };
 
 const SUBJECT_LABELS: Record<ContactPayload['subject'], string> = {
@@ -23,6 +24,7 @@ export async function POST(request: Request) {
     const email = (body.email ?? '').trim();
     const phone = (body.phone ?? '').trim();
     const subjectKey = (body.subject ?? 'other') as ContactPayload['subject'];
+    const message = (body.message ?? '').toString();
 
     if (!name || !email) {
       return NextResponse.json({ error: 'Name and email are required.' }, { status: 400 });
@@ -46,11 +48,12 @@ export async function POST(request: Request) {
         <p style="margin: 0 0 8px;"><strong>Email:</strong> ${escapeHtml(email)}</p>
         ${phone ? `<p style=\"margin: 0 0 8px;\"><strong>Phone:</strong> ${escapeHtml(phone)}</p>` : ''}
         <p style="margin: 0 0 12px;"><strong>Subject:</strong> ${escapeHtml(subject)}</p>
-        <p style="margin: 12px 0 0; font-size:12px; color:#666;">Sent from mdadnan.com contact window.</p>
+        ${message ? `<div style=\"margin: 12px 0;\"><div style=\"font-weight:600;margin-bottom:6px;\">Message</div><div style=\"white-space:pre-wrap;\">${escapeHtml(message)}</div></div>` : ''}
+        <p style="margin: 12px 0 0; font-size:12px; color:#666;">Sent from dayemadnan.com MacOS</p>
       </div>
     `;
 
-    const text = `New contact submission\n\nName: ${name}\nEmail: ${email}${phone ? `\nPhone: ${phone}` : ''}\nSubject: ${subject}`;
+    const text = `New contact submission\n\nName: ${name}\nEmail: ${email}${phone ? `\nPhone: ${phone}` : ''}\nSubject: ${subject}${message ? `\n\nMessage:\n${message}` : ''}`;
 
     const { error } = await resend.emails.send({
       from: fromAddress,

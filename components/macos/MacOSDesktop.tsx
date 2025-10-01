@@ -570,7 +570,7 @@ function PlaceholderWindow({ title, initialScrollTop = 0, onScrollTopChange }: {
 
 function ContactWindow({ initialScrollTop = 0, onScrollTopChange }: { initialScrollTop?: number; onScrollTopChange?: (t: number) => void; }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [form, setForm] = useState<{ name: string; email: string; phone: string; subject: 'speaking' | 'work' | 'other' }>({ name: '', email: '', phone: '', subject: 'speaking' });
+  const [form, setForm] = useState<{ name: string; email: string; phone: string; subject: 'speaking' | 'work' | 'other'; message: string }>({ name: '', email: '', phone: '', subject: 'speaking', message: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
   useLayoutEffect(() => {
@@ -593,7 +593,7 @@ function ContactWindow({ initialScrollTop = 0, onScrollTopChange }: { initialScr
         setResult({ ok: false, message: data.error || 'Something went wrong. Please try again.' });
       } else {
         setResult({ ok: true, message: 'Thanks! Your message has been sent.' });
-        setForm({ name: '', email: '', phone: '', subject: 'speaking' });
+        setForm({ name: '', email: '', phone: '', subject: 'speaking', message: '' });
       }
     } catch {
       setResult({ ok: false, message: 'Network error. Please try again.' });
@@ -610,7 +610,7 @@ function ContactWindow({ initialScrollTop = 0, onScrollTopChange }: { initialScr
         </div>
 
         {result && (
-          <div className={`mb-4 text-sm rounded-md border px-3 py-2 ${result.ok ? 'border-green-500/40 text-green-600 bg-green-500/5' : 'border-red-500/40 text-red-600 bg-red-500/5'}`}>{result.message}</div>
+          <div className={`mb-4 text-sm rounded-md border px-3 py-2 ${result.ok ? 'border-teal-500/40 text-teal-600 bg-teal-500/5' : 'border-red-500/40 text-red-600 bg-red-500/5'}`}>{result.message}</div>
         )}
 
         <form className="space-y-4" onSubmit={handleSubmit}>
@@ -640,8 +640,19 @@ function ContactWindow({ initialScrollTop = 0, onScrollTopChange }: { initialScr
             </div>
           </div>
 
-          <div className="flex items-center gap-3 pt-2">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="contact-message" className="text-sm text-[var(--macos-text-secondary)]">Message</label>
+            <textarea id="contact-message" name="message" rows={6} placeholder="Share a few details about your request..." value={form.message} onChange={(e) => setForm(s => ({ ...s, message: e.target.value }))} disabled={isSubmitting} className="px-3 py-2 rounded-md border border-[var(--macos-border)] bg-[var(--macos-surface)] text-[var(--macos-text-primary)] placeholder:text-[var(--macos-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--macos-accent)] disabled:opacity-50" />
+          </div>
+
+          <div className="flex items-center justify-end pt-2">
             <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-[var(--macos-accent)] text-white rounded-md font-medium hover:bg-[var(--macos-accent-hover)] transition-colors disabled:opacity-50">{isSubmitting ? 'Sending…' : 'Send'}</button>
+          </div>
+
+          <div className="my-4 border-t border-[var(--macos-separator)]" />
+
+          <div className="flex flex-wrap gap-3 items-center">
+            <div className="text-xs text-[var(--macos-text-secondary)] mr-1">Other ways</div>
             <a href="https://cal.com/madnan" target="_blank" rel="noopener noreferrer" aria-label="Book a meeting on Cal.com" className="p-2 rounded-md border border-[var(--macos-border)] macos-hover flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               <span className="text-sm">Book A Meeting</span>
