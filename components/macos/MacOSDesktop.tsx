@@ -11,7 +11,7 @@ import BlogTemplate from "@/components/blog/BlogTemplate";
 import { blogPosts } from "@/lib/blog";
 import { DockProvider, useDockContext } from "./DockContext";
 // import { cn } from "@/lib/utils";
-import { TerminalSquare, FileVideo } from "lucide-react";
+import { TerminalSquare, FileVideo, Calendar, Linkedin } from "lucide-react";
 import MediaPlayer from "./MediaPlayer";
 
 interface WindowState {
@@ -324,8 +324,7 @@ function MacOSDesktopInner() {
                 onScrollTopChange={(t) => setScrollMemory(prev => ({ ...prev, projects: t }))}
               />
             ) : window.id === 'contact' ? (
-              <PlaceholderWindow 
-                title="Contact"
+              <ContactWindow 
                 initialScrollTop={scrollMemory['contact'] ?? 0}
                 onScrollTopChange={(t) => setScrollMemory(prev => ({ ...prev, contact: t }))}
               />
@@ -565,6 +564,95 @@ function PlaceholderWindow({ title, initialScrollTop = 0, onScrollTopChange }: {
     <div ref={containerRef} className="p-6 h-full overflow-auto" onScroll={(e) => onScrollTopChange?.((e.target as HTMLDivElement).scrollTop)}>
       <div className="text-lg font-medium mb-2">{title}</div>
       <div className="text-sm text-[var(--macos-text-secondary)]">Coming soon.</div>
+    </div>
+  );
+}
+
+function ContactWindow({ initialScrollTop = 0, onScrollTopChange }: { initialScrollTop?: number; onScrollTopChange?: (t: number) => void; }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [form, setForm] = useState<{ name: string; email: string; phone: string; subject: 'speaking' | 'work' | 'other' }>({ name: '', email: '', phone: '', subject: 'speaking' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+  useLayoutEffect(() => {
+    if (containerRef.current) containerRef.current.scrollTop = initialScrollTop;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name || !form.email) return;
+    setIsSubmitting(true);
+    setResult(null);
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setResult({ ok: false, message: data.error || 'Something went wrong. Please try again.' });
+      } else {
+        setResult({ ok: true, message: 'Thanks! Your message has been sent.' });
+        setForm({ name: '', email: '', phone: '', subject: 'speaking' });
+      }
+    } catch {
+      setResult({ ok: false, message: 'Network error. Please try again.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  return (
+    <div ref={containerRef} className="p-6 h-full overflow-auto" onScroll={(e) => onScrollTopChange?.((e.target as HTMLDivElement).scrollTop)}>
+      <div className="max-w-2xl">
+        <div className="mb-6">
+          <div className="text-lg font-medium text-[var(--macos-text-primary)]">Get in touch</div>
+          <div className="text-sm text-[var(--macos-text-secondary)]">I usually reply within a day.</div>
+        </div>
+
+        {result && (
+          <div className={`mb-4 text-sm rounded-md border px-3 py-2 ${result.ok ? 'border-green-500/40 text-green-600 bg-green-500/5' : 'border-red-500/40 text-red-600 bg-red-500/5'}`}>{result.message}</div>
+        )}
+
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="contact-name" className="text-sm text-[var(--macos-text-secondary)]">Name<span className="text-red-500">*</span></label>
+              <input id="contact-name" name="name" required placeholder="Your name" value={form.name} onChange={(e) => setForm(s => ({ ...s, name: e.target.value }))} disabled={isSubmitting} className="px-3 py-2 rounded-md border border-[var(--macos-border)] bg-[var(--macos-surface)] text-[var(--macos-text-primary)] placeholder:text-[var(--macos-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--macos-accent)] disabled:opacity-50" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="contact-email" className="text-sm text-[var(--macos-text-secondary)]">Email<span className="text-red-500">*</span></label>
+              <input id="contact-email" name="email" type="email" required placeholder="you@example.com" value={form.email} onChange={(e) => setForm(s => ({ ...s, email: e.target.value }))} disabled={isSubmitting} className="px-3 py-2 rounded-md border border-[var(--macos-border)] bg-[var(--macos-surface)] text-[var(--macos-text-primary)] placeholder:text-[var(--macos-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--macos-accent)] disabled:opacity-50" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="contact-phone" className="text-sm text-[var(--macos-text-secondary)]">Phone (optional)</label>
+              <input id="contact-phone" name="phone" type="tel" placeholder="+1 555 000 0000" value={form.phone} onChange={(e) => setForm(s => ({ ...s, phone: e.target.value }))} disabled={isSubmitting} className="px-3 py-2 rounded-md border border-[var(--macos-border)] bg-[var(--macos-surface)] text-[var(--macos-text-primary)] placeholder:text-[var(--macos-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--macos-accent)] disabled:opacity-50" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="contact-subject" className="text-sm text-[var(--macos-text-secondary)]">Subject</label>
+              <select id="contact-subject" name="subject" value={form.subject} onChange={(e) => setForm(s => ({ ...s, subject: e.target.value as 'speaking' | 'work' | 'other' }))} disabled={isSubmitting} className="px-3 py-2 rounded-md border border-[var(--macos-border)] bg-[var(--macos-surface)] text-[var(--macos-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--macos-accent)] disabled:opacity-50">
+                <option value="speaking">Speaking engagement</option>
+                <option value="work">Work with me</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 pt-2">
+            <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-[var(--macos-accent)] text-white rounded-md font-medium hover:bg-[var(--macos-accent-hover)] transition-colors disabled:opacity-50">{isSubmitting ? 'Sending…' : 'Send'}</button>
+            <a href="https://cal.com/madnan" target="_blank" rel="noopener noreferrer" aria-label="Book a meeting on Cal.com" className="p-2 rounded-md border border-[var(--macos-border)] macos-hover flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              <span className="text-sm">Book A Meeting</span>
+            </a>
+            <a href="https://www.linkedin.com/in/mdayemadnan/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn profile" className="p-2 rounded-md border border-[var(--macos-border)] macos-hover flex items-center gap-2">
+              <Linkedin className="w-4 h-4" />
+              <span className="text-sm">LinkedIn</span>
+            </a>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
