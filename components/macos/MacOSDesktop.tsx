@@ -13,6 +13,8 @@ import { DockProvider, useDockContext } from "./DockContext";
 // import { cn } from "@/lib/utils";
 import { TerminalSquare, FileVideo, Calendar, Linkedin } from "lucide-react";
 import MediaPlayer from "./MediaPlayer";
+import DesktopShortcut from "./DesktopShortcut";
+import VerticalIcon from "./icons/Vertical";
 
 interface WindowState {
   id: string;
@@ -29,6 +31,16 @@ function MacOSDesktopInner() {
   const [isTopHover, setIsTopHover] = useState<boolean>(false);
   const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
   const REVEAL_STRIP_HEIGHT_PX = 14; // increase hover activation area
+  // Desktop shortcut positions (session memory)
+  const [shortcutPositions, setShortcutPositions] = useState<{ [key: string]: { left: number; top: number } }>({
+    "the-vertical": { left: 24, top: 80 },
+    "voortgang": { left: 24, top: 210 },
+    "nettaworks": { left: 24, top: 340 },
+  });
+
+  const updateShortcut = useCallback((id: string, pos: { left: number; top: number }) => {
+    setShortcutPositions((s) => ({ ...s, [id]: pos }));
+  }, []);
 
   // Window memory: persists while window is minimized, resets on close
   const [blogMemory, setBlogMemory] = useState<{ selectedId: string | null; scrollTop: number }>({
@@ -239,6 +251,33 @@ function MacOSDesktopInner() {
     <div className="relative h-screen w-screen overflow-hidden">
       {/* Desktop Wallpaper */}
       <DesktopWallpaper imageSrc={wallpaperSrc} imageAlt="Eagle flying over forest" />
+      {/* Desktop Shortcuts */}
+      <div className="absolute inset-0 z-[20] pointer-events-none">
+        <DesktopShortcut
+          icon={<VerticalIcon className="w-[60px] h-[60px]" />}
+          label="The Vertical"
+          left={shortcutPositions["the-vertical"].left}
+          top={shortcutPositions["the-vertical"].top}
+          onMove={(pos) => updateShortcut("the-vertical", pos)}
+          onOpen={() => window.open("https://thevertical.pk", "_blank", "noopener,noreferrer")}
+        />
+        <DesktopShortcut
+          icon={<img src="/voortgang.png" alt="Voortgang logo" className="w-[56px] h-[56px]" draggable={false} />}
+          label="Voortgang"
+          left={shortcutPositions["voortgang"].left}
+          top={shortcutPositions["voortgang"].top}
+          onMove={(pos) => updateShortcut("voortgang", pos)}
+          onOpen={() => window.open("https://voortgang.io", "_blank", "noopener,noreferrer")}
+        />
+        <DesktopShortcut
+          icon={<img src="/nettaworks.png" alt="NettaWorks logo" className="w-[46px] h-[46px]" draggable={false} />}
+          label="NettaWorks"
+          left={shortcutPositions["nettaworks"].left}
+          top={shortcutPositions["nettaworks"].top}
+          onMove={(pos) => updateShortcut("nettaworks", pos)}
+          onOpen={() => window.open("https://nettaworks.com", "_blank", "noopener,noreferrer")}
+        />
+      </div>
       
       {/* Menu Bar */}
       {/* Always-on hover reveal strip when any window is maximized */}
