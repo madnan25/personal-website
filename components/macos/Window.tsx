@@ -169,7 +169,7 @@ export default function Window({
   }, [winWidth, winHeight]);
 
   return (
-    <div ref={constraintsRef} className="fixed inset-0 pointer-events-none">
+    <div ref={constraintsRef} className="fixed inset-0 pointer-events-none z-[70]">
       <motion.div
         className={cn(
           "pointer-events-auto absolute",
@@ -177,7 +177,7 @@ export default function Window({
           "border border-[var(--macos-glass-border)]",
           "rounded-xl shadow-2xl",
           "overflow-hidden",
-          "z-[50]",
+          "z-[80]",
           className
         )}
         onMouseDown={() => onFocus?.()}

@@ -251,8 +251,8 @@ function MacOSDesktopInner() {
     <div className="relative h-screen w-screen overflow-hidden">
       {/* Desktop Wallpaper */}
       <DesktopWallpaper imageSrc={wallpaperSrc} imageAlt="Eagle flying over forest" />
-      {/* Desktop Shortcuts */}
-      <div className="absolute inset-0 z-[20] pointer-events-none">
+      {/* Desktop Shortcuts - keep behind any windows */}
+      <div className="absolute inset-0 z-[5] pointer-events-none">
         <DesktopShortcut
           icon={<VerticalIcon className="w-[60px] h-[60px]" />}
           label="The Vertical"
