@@ -60,13 +60,15 @@ function MacOSDesktopInner() {
   const revealBars = () => {
     if (!isAnyMaximized) return;
     if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
+    // Immediately show both bars together to prevent background flash
     setIsTopHover(true);
   };
 
   const hideBarsWithDelay = () => {
     if (!isAnyMaximized) return;
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    hideTimerRef.current = setTimeout(() => setIsTopHover(false), 250);
+    // Hide both bars together with same timing
+    hideTimerRef.current = setTimeout(() => setIsTopHover(false), 200);
   };
   const [windows, setWindows] = useState<WindowState[]>([
     {
@@ -283,14 +285,14 @@ function MacOSDesktopInner() {
       {/* Always-on hover reveal strip when any window is maximized */}
       {isAnyMaximized && !isTopHover && (
         <div 
-          className="fixed top-0 left-0 right-0 z-[70]"
+          className="fixed top-0 left-0 right-0 z-[95]"
           style={{ height: REVEAL_STRIP_HEIGHT_PX }}
           onMouseEnter={revealBars}
         />
       )}
 
       <div 
-        className="fixed inset-x-0 top-0 z-[60]"
+        className="fixed inset-x-0 top-0 z-[90]"
       >
         <MenuBar hidden={isAnyMaximized && !isTopHover} onMouseLeave={hideBarsWithDelay} onOpenWindow={(id) => openWindowById(id)} />
       </div>

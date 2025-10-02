@@ -100,7 +100,7 @@ export default function MenuBar({ className, hidden, onMouseLeave, onOpenWindow 
         className
       )}
       initial={{ y: -28 }}
-      animate={{ y: hidden ? -28 : 0, opacity: hidden ? 0.9 : 1 }}
+      animate={{ y: hidden ? -28 : 0, opacity: hidden ? 0 : 1 }}
       transition={{ type: "spring", damping: 20, stiffness: 300 }}
       onMouseLeave={() => { setActiveMenu(null); onMouseLeave?.(); }}
       style={{ pointerEvents: hidden ? 'none' : 'auto' }}

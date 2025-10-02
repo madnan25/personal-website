@@ -236,13 +236,22 @@ export default function Window({
         transition={{ type: "spring", damping: 20, stiffness: 300 }}
       >
         {/* Title Bar (animates height in full screen) */}
+        {/* Invisible hover hitbox to reveal title bar when maximized without chrome */}
+        {isMaximized && !showTopChrome && (
+          <div
+            className="absolute top-0 left-0 right-0 h-6 z-[85]"
+            onMouseEnter={() => onTitleBarHoverChange?.(true)}
+            onMouseLeave={() => onTitleBarHoverChange?.(false)}
+          />
+        )}
+
         <motion.div
           className={cn(
             "relative bg-[var(--macos-surface)] flex items-center justify-between px-4",
             isMaximized && !showTopChrome ? "border-b-0" : "border-b border-[var(--macos-separator)]"
           )}
           animate={{ height: isMaximized ? (showTopChrome ? TITLE_BAR_HEIGHT_PX : 0) : TITLE_BAR_HEIGHT_PX }}
-          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 30, duration: 0.2 }}
           style={{ overflow: 'hidden' }}
           onMouseEnter={() => isMaximized && onTitleBarHoverChange?.(true)}
           onMouseLeave={() => isMaximized && onTitleBarHoverChange?.(false)}
