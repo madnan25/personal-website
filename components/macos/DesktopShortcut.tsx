@@ -40,7 +40,6 @@ export default function DesktopShortcut({ icon, label, left, top, onOpen, onMove
   const onMouseDown = (e: React.MouseEvent) => {
     // Begin drag only with primary button
     if (e.button !== 0) return;
-    const rect = rootRef.current?.getBoundingClientRect();
     draggingRef.current = {
       startX: e.clientX,
       startY: e.clientY,

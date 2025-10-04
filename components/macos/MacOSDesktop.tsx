@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
+import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
 import DesktopWallpaper, { GradientBackground } from "./DesktopWallpaper";
 import MenuBar from "./MenuBar";
 import Dock from "./Dock";
@@ -25,7 +27,9 @@ interface WindowState {
   position: { x: number; y: number };
 }
 
-function MacOSDesktopInner() {
+function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initialSelectedBlogId?: string; initialOpenWindow?: 'blog' | 'about' | 'portfolio' | 'projects' | 'contact' | 'settings' | 'terminal' | 'media' | 'trash' }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [wallpaperSrc, setWallpaperSrc] = useState<string>("/luffy-neon.jpg");
   const [isAnyMaximized, setIsAnyMaximized] = useState<boolean>(false);
   const [isTopHover, setIsTopHover] = useState<boolean>(false);
@@ -44,7 +48,7 @@ function MacOSDesktopInner() {
 
   // Window memory: persists while window is minimized, resets on close
   const [blogMemory, setBlogMemory] = useState<{ selectedId: string | null; scrollTop: number }>({
-    selectedId: null,
+    selectedId: initialSelectedBlogId ?? null,
     scrollTop: 0,
   });
   const [scrollMemory, setScrollMemory] = useState<Record<string, number>>({});
@@ -98,7 +102,7 @@ function MacOSDesktopInner() {
     {
       id: 'blog',
       title: 'Blog',
-      isOpen: false,
+      isOpen: initialOpenWindow === 'blog' || Boolean(initialSelectedBlogId),
       isMinimized: false,
       position: { x: 180, y: 160 },
       component: null // rendered with controlled props below
@@ -153,11 +157,7 @@ function MacOSDesktopInner() {
   }, [windows]);
 
   const handleDockItemClick = (itemId: string) => {
-    setWindows(prev => prev.map(w => ({
-      ...w,
-      isOpen: w.id === itemId ? true : w.isOpen,
-      isMinimized: w.id === itemId ? false : w.isMinimized,
-    })));
+    openWindowById(itemId);
   };
 
   const openWindowById = (windowId: string) => {
@@ -169,6 +169,13 @@ function MacOSDesktopInner() {
       // Move opened window to end so it renders on top
       return [...others, updatedTarget];
     });
+    // Immediately reflect in URL for key windows
+    if (windowId === 'about') {
+      router.push('/about', { scroll: false });
+    } else if (windowId === 'blog') {
+      const slug = blogMemory.selectedId;
+      router.push(slug ? `/blog/${slug}` : '/blog', { scroll: false });
+    }
   };
 
   const runCommand = (cmd: string) => {
@@ -224,6 +231,16 @@ function MacOSDesktopInner() {
     // Clear memory only on hard close
     if (windowId === 'blog') {
       setBlogMemory({ selectedId: null, scrollTop: 0 });
+      // When blog window is closed, navigate to root if currently under /blog
+      if (typeof pathname === 'string' && pathname.startsWith('/blog')) {
+        router.push('/', { scroll: false });
+      }
+    }
+    if (windowId === 'about') {
+      // When about window is closed, navigate to root if currently at /about
+      if (typeof pathname === 'string' && pathname === '/about') {
+        router.push('/', { scroll: false });
+      }
     }
     setScrollMemory(prev => ({ ...prev, [windowId]: 0 }));
     if (windowId === 'terminal') {
@@ -232,6 +249,35 @@ function MacOSDesktopInner() {
     const dock = document.querySelector('[data-role="macos-dock"]') as HTMLElement | null;
     if (dock) dock.style.zIndex = '50';
   };
+
+  // Keep URL -> UI in sync
+  useEffect(() => {
+    if (typeof pathname !== 'string') return;
+    // About page path
+    if (pathname === '/about') {
+      setWindows(prev => prev.map(w => w.id === 'about' ? { ...w, isOpen: true, isMinimized: false } : w));
+      return;
+    }
+    if (pathname === '/blog') {
+      // Ensure Blog window open with no selection
+      setWindows(prev => prev.map(w => w.id === 'blog' ? { ...w, isOpen: true, isMinimized: false } : w));
+      setBlogMemory(prev => ({ ...prev, selectedId: null }));
+      return;
+    }
+    const match = pathname.match(/^\/blog\/(.+)$/);
+    if (match) {
+      const slug = match[1];
+      setWindows(prev => prev.map(w => w.id === 'blog' ? { ...w, isOpen: true, isMinimized: false } : w));
+      setBlogMemory(prev => ({ ...prev, selectedId: slug }));
+      return;
+    }
+    // Leaving /blog*
+    setWindows(prev => prev.map(w => w.id === 'blog' ? { ...w, isOpen: false, isMinimized: false } : w));
+    // Leaving /about
+    if (!pathname.startsWith('/about')) {
+      setWindows(prev => prev.map(w => w.id === 'about' ? { ...w, isOpen: false, isMinimized: false } : w));
+    }
+  }, [pathname]);
 
   const handleWindowMinimize = (windowId: string) => {
     setWindows(prev => 
@@ -247,6 +293,26 @@ function MacOSDesktopInner() {
     setIsTopHover(false);
     const dock = document.querySelector('[data-role="macos-dock"]') as HTMLElement | null;
     if (dock) dock.style.zIndex = '50';
+
+    // Update URL if the minimized window owns the current URL
+    const ownsUrl = (id: string) => {
+      if (typeof pathname !== 'string') return false;
+      if (id === 'blog') return pathname.startsWith('/blog');
+      if (id === 'about') return pathname === '/about';
+      return false;
+    };
+    if (ownsUrl(windowId)) {
+      const blogOpen = windowsRef.current.find(w => w.id === 'blog' && w.isOpen && !w.isMinimized);
+      const aboutOpen = windowsRef.current.find(w => w.id === 'about' && w.isOpen && !w.isMinimized);
+      if (blogOpen) {
+        const slug = blogMemory.selectedId;
+        router.push(slug ? `/blog/${slug}` : '/blog', { scroll: false });
+      } else if (aboutOpen) {
+        router.push('/about', { scroll: false });
+      } else {
+        router.push('/', { scroll: false });
+      }
+    }
   };
 
   return (
@@ -264,7 +330,7 @@ function MacOSDesktopInner() {
           onOpen={() => window.open("https://thevertical.pk", "_blank", "noopener,noreferrer")}
         />
         <DesktopShortcut
-          icon={<img src="/voortgang.png" alt="Voortgang logo" className="w-[56px] h-[56px]" draggable={false} />}
+          icon={<Image src="/voortgang.png" alt="Voortgang logo" width={56} height={56} draggable={false} />}
           label="Voortgang"
           left={shortcutPositions["voortgang"].left}
           top={shortcutPositions["voortgang"].top}
@@ -272,7 +338,7 @@ function MacOSDesktopInner() {
           onOpen={() => window.open("https://voortgang.io", "_blank", "noopener,noreferrer")}
         />
         <DesktopShortcut
-          icon={<img src="/nettaworks.png" alt="NettaWorks logo" className="w-[46px] h-[46px]" draggable={false} />}
+          icon={<Image src="/nettaworks.png" alt="NettaWorks logo" width={46} height={46} draggable={false} />}
           label="NettaWorks"
           left={shortcutPositions["nettaworks"].left}
           top={shortcutPositions["nettaworks"].top}
@@ -332,6 +398,13 @@ function MacOSDesktopInner() {
                 const others = prev.filter(w => w.id !== window.id);
                 return [...others, target];
               });
+              // Reflect focused window in URL
+              if (window.id === 'about') {
+                router.push('/about', { scroll: false });
+              } else if (window.id === 'blog') {
+                const slug = blogMemory.selectedId;
+                router.push(slug ? `/blog/${slug}` : '/blog', { scroll: false });
+              }
             }}
           >
             {window.id === 'blog' ? (
@@ -396,10 +469,10 @@ function MacOSDesktopInner() {
   );
 }
 
-export default function MacOSDesktop() {
+export default function MacOSDesktop({ initialSelectedBlogId, initialOpenWindow }: { initialSelectedBlogId?: string; initialOpenWindow?: 'blog' | 'about' | 'portfolio' | 'projects' | 'contact' | 'settings' | 'terminal' | 'media' | 'trash' }) {
   return (
     <DockProvider>
-      <MacOSDesktopInner />
+      <MacOSDesktopInner initialSelectedBlogId={initialSelectedBlogId} initialOpenWindow={initialOpenWindow} />
     </DockProvider>
   );
 }
@@ -709,7 +782,8 @@ function ContactWindow({ initialScrollTop = 0, onScrollTopChange }: { initialScr
   );
 }
 
-function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChange }: { selectedId: string | null; onSelectedIdChange: (id: string) => void; scrollTop: number; onScrollTopChange: (t: number) => void; }) {
+function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChange }: { selectedId: string | null; onSelectedIdChange: (id: string | null) => void; scrollTop: number; onScrollTopChange: (t: number) => void; }) {
+  const router = useRouter();
   const selected = blogPosts.find((p) => p.id === selectedId) ?? null;
   const mainRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -728,7 +802,15 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
           return (
             <button
               key={post.id}
-              onClick={() => onSelectedIdChange(post.id)}
+              onClick={() => {
+                if (isActive) {
+                  onSelectedIdChange(null);
+                  router.push('/blog', { scroll: false });
+                } else {
+                  onSelectedIdChange(post.id);
+                  router.push(`/blog/${post.id}`, { scroll: false });
+                }
+              }}
               className={`w-full text-left rounded-md p-3 transition-colors ${
                 isActive
                   ? 'bg-[var(--macos-accent)]/10 border border-[var(--macos-accent)]/30'
