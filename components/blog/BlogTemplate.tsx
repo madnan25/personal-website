@@ -51,6 +51,15 @@ function BlockRenderer({ block }: { block: BlogBlock }) {
       </blockquote>
     );
   }
+  if (block.type === 'list') {
+    return (
+      <ul className="list-disc pl-6 md:pl-8 space-y-2 text-base md:text-lg leading-8 text-[var(--macos-text-secondary)]">
+        {block.items.map((item, i) => (
+          <li key={i}>{item}</li>
+        ))}
+      </ul>
+    );
+  }
   return (
     <p className="text-base md:text-lg leading-8 text-[var(--macos-text-secondary)]">
       {block.text}

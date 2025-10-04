@@ -798,6 +798,9 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
   const router = useRouter();
   const selected = blogPosts.find((p) => p.id === selectedId) ?? null;
   const mainRef = useRef<HTMLDivElement>(null);
+  const [html, setHtml] = useState<string | null>(null);
+  const [isLoadingHtml, setIsLoadingHtml] = useState(false);
+  const [htmlError, setHtmlError] = useState<string | null>(null);
   useEffect(() => {
     if (mainRef.current) {
       mainRef.current.scrollTop = scrollTop || 0;
@@ -805,6 +808,29 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
     // run only on mount to restore position
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Fetch server-rendered HTML for file-backed posts (no inline content)
+  useEffect(() => {
+    let cancelled = false;
+    setHtml(null);
+    setHtmlError(null);
+    if (!selected || (selected.content && selected.content.length > 0)) return;
+    setIsLoadingHtml(true);
+    fetch(`/api/blog/${selected.id}`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error('Failed to load');
+        const data = await res.json();
+        if (!cancelled) setHtml(data.html as string);
+      })
+      .catch(() => {
+        if (!cancelled) setHtmlError('Failed to load article');
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingHtml(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selected]);
   return (
     <div className="h-full flex">
       <aside className="w-64 border-r border-[var(--macos-border)] p-4 space-y-3 overflow-auto">
@@ -843,9 +869,17 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
               <div className="text-sm">Choose from the list on the left.</div>
             </div>
           </div>
-        ) : (
+        ) : selected.content && selected.content.length > 0 ? (
           <BlogTemplate post={selected} />
-        )}
+        ) : isLoadingHtml ? (
+          <div className="text-[var(--macos-text-secondary)]">Loading…</div>
+        ) : htmlError ? (
+          <div className="text-red-500">{htmlError}</div>
+        ) : html ? (
+          <article className="max-w-3xl mx-auto prose prose-invert prose-p:leading-8">
+            <div dangerouslySetInnerHTML={{ __html: html }} />
+          </article>
+        ) : null}
       </main>
     </div>
   );
