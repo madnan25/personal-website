@@ -250,16 +250,15 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
     if (dock) dock.style.zIndex = '50';
   };
 
-  // Keep URL -> UI in sync
+  // Keep URL -> UI in sync (open corresponding window when its route is active).
+  // Do not auto-close other windows here to avoid cross-closing behavior.
   useEffect(() => {
     if (typeof pathname !== 'string') return;
-    // About page path
     if (pathname === '/about') {
       setWindows(prev => prev.map(w => w.id === 'about' ? { ...w, isOpen: true, isMinimized: false } : w));
       return;
     }
     if (pathname === '/blog') {
-      // Ensure Blog window open with no selection
       setWindows(prev => prev.map(w => w.id === 'blog' ? { ...w, isOpen: true, isMinimized: false } : w));
       setBlogMemory(prev => ({ ...prev, selectedId: null }));
       return;
@@ -271,12 +270,7 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
       setBlogMemory(prev => ({ ...prev, selectedId: slug }));
       return;
     }
-    // Leaving /blog*
-    setWindows(prev => prev.map(w => w.id === 'blog' ? { ...w, isOpen: false, isMinimized: false } : w));
-    // Leaving /about
-    if (!pathname.startsWith('/about')) {
-      setWindows(prev => prev.map(w => w.id === 'about' ? { ...w, isOpen: false, isMinimized: false } : w));
-    }
+    // For other paths, do nothing; explicit close is handled by handleWindowClose.
   }, [pathname]);
 
   const handleWindowMinimize = (windowId: string) => {
@@ -304,13 +298,31 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
     if (ownsUrl(windowId)) {
       const blogOpen = windowsRef.current.find(w => w.id === 'blog' && w.isOpen && !w.isMinimized);
       const aboutOpen = windowsRef.current.find(w => w.id === 'about' && w.isOpen && !w.isMinimized);
-      if (blogOpen) {
-        const slug = blogMemory.selectedId;
-        router.push(slug ? `/blog/${slug}` : '/blog', { scroll: false });
-      } else if (aboutOpen) {
-        router.push('/about', { scroll: false });
+      if (windowId === 'blog') {
+        // Blog was minimized and owned the URL: clear slug by navigating to root (avoid auto-reopen)
+        if (aboutOpen) {
+          router.push('/about', { scroll: false });
+        } else {
+          router.push('/', { scroll: false });
+        }
+      } else if (windowId === 'about') {
+        // About was minimized and owned the URL: prefer blog if active, else root
+        if (blogOpen) {
+          const slug = blogMemory.selectedId;
+          router.push(slug ? `/blog/${slug}` : '/blog', { scroll: false });
+        } else {
+          router.push('/', { scroll: false });
+        }
       } else {
-        router.push('/', { scroll: false });
+        // Fallback to previous behavior
+        if (blogOpen) {
+          const slug = blogMemory.selectedId;
+          router.push(slug ? `/blog/${slug}` : '/blog', { scroll: false });
+        } else if (aboutOpen) {
+          router.push('/about', { scroll: false });
+        } else {
+          router.push('/', { scroll: false });
+        }
       }
     }
   };

@@ -1,5 +1,6 @@
 import { blogPosts } from "@/lib/blog";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 export const dynamic = "error";
 export const revalidate = false;
@@ -11,7 +12,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const post = blogPosts.find((p) => p.id === slug);
-  if (!post) return {};
+  if (!post) return { robots: { index: false, follow: false } };
   const url = `https://dayemadnan.com/blog/${slug}`;
   return {
     title: `${post.title} — Mohammad Dayem Adnan` ,
@@ -45,7 +46,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 export default async function BlogSlugStub({ params }: { params: Promise<{ slug: string }> }) {
-  await params; // Ensure params is awaited
+  const { slug } = await params;
+  const post = blogPosts.find((p) => p.id === slug);
+  if (!post) notFound();
   return null;
 }
 
