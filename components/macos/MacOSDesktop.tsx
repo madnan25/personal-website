@@ -798,9 +798,9 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
   const router = useRouter();
   const selected = blogPosts.find((p) => p.id === selectedId) ?? null;
   const mainRef = useRef<HTMLDivElement>(null);
-  const [html, setHtml] = useState<string | null>(null);
-  const [isLoadingHtml, setIsLoadingHtml] = useState(false);
-  const [htmlError, setHtmlError] = useState<string | null>(null);
+  const [dynamicBlocks, setDynamicBlocks] = useState<typeof selected | null>(null);
+  const [isLoadingBlocks, setIsLoadingBlocks] = useState(false);
+  const [blocksError, setBlocksError] = useState<string | null>(null);
   useEffect(() => {
     if (mainRef.current) {
       mainRef.current.scrollTop = scrollTop || 0;
@@ -808,25 +808,27 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
     // run only on mount to restore position
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // Fetch server-rendered HTML for file-backed posts (no inline content)
+  // Dynamically import per-post blocks for file-backed posts (no inline content)
   useEffect(() => {
     let cancelled = false;
-    setHtml(null);
-    setHtmlError(null);
+    setDynamicBlocks(null);
+    setBlocksError(null);
     if (!selected || (selected.content && selected.content.length > 0)) return;
-    setIsLoadingHtml(true);
-    fetch(`/api/blog/${selected.id}`)
-      .then(async (res) => {
-        if (!res.ok) throw new Error('Failed to load');
-        const data = await res.json();
-        if (!cancelled) setHtml(data.html as string);
-      })
-      .catch(() => {
-        if (!cancelled) setHtmlError('Failed to load article');
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoadingHtml(false);
-      });
+    setIsLoadingBlocks(true);
+    ;(async () => {
+      try {
+        if (selected.id === 'in-defense-of-bubbles') {
+          const mod = await import('@/lib/posts/in-defense-of-bubbles');
+          if (!cancelled) {
+            setDynamicBlocks({ ...selected, content: mod.content });
+          }
+        }
+      } catch {
+        if (!cancelled) setBlocksError('Failed to load article');
+      } finally {
+        if (!cancelled) setIsLoadingBlocks(false);
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -871,14 +873,12 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
           </div>
         ) : selected.content && selected.content.length > 0 ? (
           <BlogTemplate post={selected} />
-        ) : isLoadingHtml ? (
+        ) : isLoadingBlocks ? (
           <div className="text-[var(--macos-text-secondary)]">Loading…</div>
-        ) : htmlError ? (
-          <div className="text-red-500">{htmlError}</div>
-        ) : html ? (
-          <article className="max-w-3xl mx-auto prose prose-invert prose-p:leading-8">
-            <div dangerouslySetInnerHTML={{ __html: html }} />
-          </article>
+        ) : blocksError ? (
+          <div className="text-red-500">{blocksError}</div>
+        ) : dynamicBlocks ? (
+          <BlogTemplate post={dynamicBlocks} />
         ) : null}
       </main>
     </div>
