@@ -90,7 +90,7 @@ export default function MenuBar({ className, hidden, onMouseLeave, onOpenWindow 
     <motion.div
       className={cn(
         "fixed top-0 left-0 right-0 z-50",
-        "h-8 px-3 md:px-4",
+        "px-3 md:px-4",
         "backdrop-blur-2xl",
         "[background:var(--sequoia-menubar-bg)]",
         "border-b border-[var(--sequoia-menubar-separator)]",
@@ -103,7 +103,12 @@ export default function MenuBar({ className, hidden, onMouseLeave, onOpenWindow 
       animate={{ y: hidden ? -28 : 0, opacity: hidden ? 0 : 1 }}
       transition={{ type: "spring", damping: 20, stiffness: 300 }}
       onMouseLeave={() => { setActiveMenu(null); onMouseLeave?.(); }}
-      style={{ pointerEvents: hidden ? 'none' : 'auto' }}
+      style={{
+        pointerEvents: hidden ? 'none' : 'auto',
+        // Respect device safe area (e.g., iPad/iPhone notch)
+        height: 'calc(32px + env(safe-area-inset-top, 0px))',
+        paddingTop: 'env(safe-area-inset-top, 0px)'
+      }}
     >
       {/* Left side - App menu */}
       <div className="flex items-center gap-1 relative">
@@ -116,11 +121,7 @@ export default function MenuBar({ className, hidden, onMouseLeave, onOpenWindow 
         >
           <AppleLogo className="w-[14px] h-[14px]" />
         </motion.button>
-        <MenuBarItem 
-          label="Portfolio" 
-          isActive={activeMenu === 'portfolio'}
-          onClick={() => setActiveMenu(activeMenu === 'portfolio' ? null : 'portfolio')}
-        />
+        {/* Portfolio removed */}
         <MenuBarItem 
           label="About" 
           onClick={() => setActiveMenu(activeMenu === 'about' ? null : 'about')}

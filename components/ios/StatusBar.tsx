@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { useBattery } from "../macos/hooks/useBattery";
 
 interface StatusBarProps {
   className?: string;
@@ -10,6 +11,7 @@ interface StatusBarProps {
 
 export default function StatusBar({ className }: StatusBarProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const battery = useBattery();
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -28,7 +30,7 @@ export default function StatusBar({ className }: StatusBarProps) {
     <motion.div
       className={cn(
         "fixed top-0 left-0 right-0 z-50",
-        "h-11 px-6 pt-2",
+        "px-6",
         "flex items-center justify-between",
         "text-white text-sm font-semibold",
         className
@@ -36,6 +38,10 @@ export default function StatusBar({ className }: StatusBarProps) {
       initial={{ y: -44 }}
       animate={{ y: 0 }}
       transition={{ type: "spring", damping: 20, stiffness: 300 }}
+      style={{
+        height: 'calc(44px + env(safe-area-inset-top, 0px))',
+        paddingTop: 'env(safe-area-inset-top, 0px)'
+      }}
     >
       {/* Left side - Time */}
       <div className="text-base font-semibold">
@@ -72,12 +78,17 @@ export default function StatusBar({ className }: StatusBarProps) {
         {/* Battery */}
         <div className="ml-1 flex items-center">
           <div className="relative">
-            <div className="w-6 h-3 border border-white rounded-sm">
-              <div className="w-5 h-2 bg-white rounded-sm m-0.5" />
+            <div className="w-6 h-3 border border-white rounded-sm overflow-hidden">
+              <div
+                className="h-full bg-white"
+                style={{ width: `${Math.round(((battery.level ?? 1) * 100))}%` }}
+              />
             </div>
             <div className="absolute -right-0.5 top-1 w-0.5 h-1 bg-white rounded-r-sm" />
           </div>
-          <span className="ml-1 text-xs">100</span>
+          <span className="ml-1 text-xs">
+            {battery.level !== null ? Math.round(battery.level * 100) : 100}
+          </span>
         </div>
       </div>
     </motion.div>

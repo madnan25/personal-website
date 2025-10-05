@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, PanInfo } from "framer-motion";
 import StatusBar from "./StatusBar";
 import HomeScreen from "./HomeScreen";
 import AppWindow from "./AppWindow";
 import ControlCenter from "./ControlCenter";
+import { blogPosts } from "@/lib/blog";
+import BlogTemplate from "@/components/blog/BlogTemplate";
 
 interface AppState {
   id: string;
@@ -14,8 +16,26 @@ interface AppState {
   component: React.ReactNode;
 }
 
+type WallpaperOption = 'video' | 'mobile1' | 'inouske' | 'luffyPhone' | 'luffyKaido';
+
 export default function IOSDevice() {
   const [controlCenterOpen, setControlCenterOpen] = useState(false);
+  const [wallpaper, setWallpaper] = useState<WallpaperOption>('video');
+
+  // Load/persist wallpaper preference
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('ios_wallpaper') as WallpaperOption | null;
+      if (saved === 'video' || saved === 'mobile1' || saved === 'inouske' || saved === 'luffyPhone' || saved === 'luffyKaido') {
+        setWallpaper(saved);
+      }
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('ios_wallpaper', wallpaper);
+    } catch {}
+  }, [wallpaper]);
   const [apps, setApps] = useState<Record<string, AppState>>({
     about: {
       id: 'about',
@@ -23,17 +43,23 @@ export default function IOSDevice() {
       isOpen: false,
       component: <AboutApp />
     },
-    portfolio: {
-      id: 'portfolio',
-      title: 'Portfolio',
+    blog: {
+      id: 'blog',
+      title: 'Blog',
       isOpen: false,
-      component: <PortfolioApp />
+      component: <BlogApp />
     },
-    contact: {
-      id: 'contact',
-      title: 'Contact',
+    projects: {
+      id: 'projects',
+      title: 'Projects',
       isOpen: false,
-      component: <ContactApp />
+      component: <ProjectsApp />
+    },
+    settings: {
+      id: 'settings',
+      title: 'Settings',
+      isOpen: false,
+      component: <SettingsApp wallpaper={wallpaper} onChange={setWallpaper} />
     },
   });
 
@@ -62,21 +88,54 @@ export default function IOSDevice() {
   };
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-black">
-      <div className="absolute inset-0 -z-10">
-        <motion.div
-          className="absolute inset-0"
-          initial={{ scale: 1.1, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 1.5, ease: "easeOut" }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-blue-600 to-blue-800" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
-        </motion.div>
+    <div
+      className="relative overflow-hidden bg-black text-[var(--macos-text-primary)]"
+      style={{
+        width: '100svw',
+        height: '100svh',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)'
+      }}
+    >
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        {wallpaper === 'video' ? (
+          <motion.video
+            className="absolute inset-0 w-full h-full object-cover"
+            initial={{ scale: 1.05, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 1.2, ease: "easeOut" }}
+            src="/inouske-video.mp4"
+            autoPlay
+            muted
+            playsInline
+            loop
+          />
+        ) : (
+          <motion.div
+            className="absolute inset-0 bg-center bg-cover"
+            initial={{ scale: 1.05, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 1.2, ease: "easeOut" }}
+            style={{ backgroundImage: `url(${(() => {
+              switch (wallpaper) {
+                case 'mobile1':
+                  return '/mobile-wallpaper1.jpeg';
+                case 'inouske':
+                  return '/inouske.jpeg';
+                case 'luffyPhone':
+                  return '/luffy-phone.jpg';
+                case 'luffyKaido':
+                  return '/luffy-kaido.jpeg';
+                default:
+                  return '/mobile-wallpaper1.jpeg';
+              }
+            })()})` }}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
       </div>
       
       <motion.div
-        className="absolute top-0 right-0 w-20 h-20 z-10"
+        className="absolute top-0 right-0 w-20 h-20 z-10 pointer-events-auto"
         drag="y"
         dragConstraints={{ top: 0, bottom: 0 }}
         dragElastic={0.1}
@@ -84,16 +143,23 @@ export default function IOSDevice() {
       />
 
       <StatusBar />
-      <HomeScreen onAppOpen={handleAppOpen} />
+      {/* Prevent background scroll when any window is open by toggling pointer events */}
+      <div className={apps.about.isOpen || apps.blog.isOpen || apps.projects.isOpen || apps.settings.isOpen ? 'pointer-events-none' : ''}>
+        <HomeScreen onAppOpen={handleAppOpen} />
+      </div>
       
-      {Object.values(apps).map((app) => (
+      {Object.entries(apps).map(([id, app]) => (
         <AppWindow
-          key={app.id}
+          key={id}
           title={app.title}
           isOpen={app.isOpen}
-          onClose={() => handleAppClose(app.id)}
+          onClose={() => handleAppClose(id)}
         >
-          {app.component}
+          {id === 'settings' ? (
+            <SettingsApp wallpaper={wallpaper} onChange={setWallpaper} />
+          ) : (
+            app.component
+          )}
         </AppWindow>
       ))}
       
@@ -107,72 +173,56 @@ export default function IOSDevice() {
 
 function AboutApp() {
   return (
-    <div className="p-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-6"
-      >
-        <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl">
-          👨‍💻
-        </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">MD Adnan</h1>
-        <p className="text-gray-600 mb-4">Strategic Design Leader</p>
-        
-        <div className="flex flex-wrap justify-center gap-2 mb-6">
-          {['CMO', 'Founder', 'Head of Delivery'].map((role) => (
-            <span 
-              key={role}
-              className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
-            >
-              {role}
-            </span>
-          ))}
-        </div>
-      </motion.div>
-
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">About Me</h2>
-          <p className="text-gray-700 leading-relaxed">
-            I&#39;m a strategic design leader who bridges visionary marketing strategies with flawless technical execution. 
-            My passion lies in building premium digital experiences that drive measurable business impact.
-          </p>
-        </div>
-
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">Core Expertise</h3>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              'Brand Strategy',
-              'Growth Marketing',
-              'UX/UI Design',
-              'Team Leadership',
-              'Product Management',
-              'Technical Delivery'
-            ].map((skill) => (
-              <div key={skill} className="flex items-center space-x-2 text-sm text-gray-700">
-                <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                <span>{skill}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+    <div className="p-0">
+      {/* Embed the shared AboutContent for consistent copy/design */}
+      <div className="px-4 py-4">
+        {/* eslint-disable-next-line @typescript-eslint/no-require-imports */}
+        {require('@/components/hero/AboutContent').default()}
       </div>
     </div>
   );
 }
 
-function PortfolioApp() {
+function ProjectsApp() {
   return (
     <div className="p-6">
-      <h2 className="text-xl font-bold text-gray-900 mb-4">Portfolio</h2>
-      <div className="space-y-4">
-        {[1, 2, 3].map((project) => (
-          <div key={project} className="bg-gray-50 rounded-xl p-4">
-            <div className="w-full h-32 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg mb-3" />
-            <h3 className="font-semibold text-gray-900">Project {project}</h3>
-            <p className="text-sm text-gray-600">Description of the amazing project work.</p>
+      <div className="grid grid-cols-1 gap-4">
+        {[
+          {
+            title: 'CareHub',
+            desc: 'Tenant management without chaos.',
+            emoji: '🏢',
+            color: 'from-purple-500 to-purple-700'
+          },
+          {
+            title: 'Awards Voting',
+            desc: 'Trusted, auditable tallies.',
+            emoji: '🏆',
+            color: 'from-indigo-500 to-indigo-700'
+          },
+          {
+            title: 'Marketing Portal',
+            desc: 'Alignment that pays for itself.',
+            emoji: '📈',
+            color: 'from-fuchsia-500 to-fuchsia-700'
+          },
+        ].map((p) => (
+          <div key={p.title} className="rounded-2xl p-1 bg-gradient-to-br shadow-lg"
+            style={{ backgroundImage: `linear-gradient(135deg, var(--tw-gradient-from), var(--tw-gradient-to))` }}
+          >
+            <div className={`rounded-2xl p-4 bg-[var(--macos-surface)]/90 backdrop-blur border border-[var(--macos-border)]`}
+              style={{
+                // Tailwind dynamic gradient via className on outer not reliable inline; keep inner neutral
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-gradient-to-br ${p.color} text-white`}>{p.emoji}</div>
+                <div>
+                  <div className="font-semibold text-[var(--macos-text-primary)]">{p.title}</div>
+                  <div className="text-sm text-[var(--macos-text-secondary)]">{p.desc}</div>
+                </div>
+              </div>
+            </div>
           </div>
         ))}
       </div>
@@ -183,15 +233,15 @@ function PortfolioApp() {
 function ContactApp() {
   return (
     <div className="p-6">
-      <h2 className="text-xl font-bold text-gray-900 mb-4">Get in Touch</h2>
+      <h2 className="text-xl font-bold text-[var(--macos-text-primary)] mb-4">Get in Touch</h2>
       <div className="space-y-4">
         <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-          <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+          <div className="w-10 h-10 bg-[var(--macos-accent)] rounded-full flex items-center justify-center">
             <span className="text-white">📧</span>
           </div>
           <div>
-            <div className="font-medium text-gray-900">Email</div>
-            <div className="text-sm text-gray-600">hello@mdadnan.com</div>
+            <div className="font-medium text-[var(--macos-text-primary)]">Email</div>
+            <div className="text-sm text-[var(--macos-text-secondary)]">hello@mdadnan.com</div>
           </div>
         </div>
         
@@ -200,8 +250,184 @@ function ContactApp() {
             <span className="text-white">💼</span>
           </div>
           <div>
-            <div className="font-medium text-gray-900">LinkedIn</div>
-            <div className="text-sm text-gray-600">@mdadnan</div>
+            <div className="font-medium text-[var(--macos-text-primary)]">LinkedIn</div>
+            <div className="text-sm text-[var(--macos-text-secondary)]">@mdadnan</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BlogApp() {
+  const [selected, setSelected] = useState<string | null>(null);
+  const post = blogPosts.find((p) => p.id === selected) || null;
+  const [dynamicPost, setDynamicPost] = useState<typeof post | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load file-backed content for selected post
+  useEffect(() => {
+    setDynamicPost(null);
+    setError(null);
+    if (!post) return;
+    if (post.content && post.content.length > 0) return;
+    setIsLoading(true);
+    (async () => {
+      try {
+        if (post.id === 'in-defense-of-bubbles') {
+          const mod = await import('@/lib/posts/in-defense-of-bubbles');
+          setDynamicPost({ ...post, content: mod.content });
+        } else if (post.id === 'build-things-that-matter') {
+          const mod = await import('@/lib/posts/build-things-that-matter');
+          setDynamicPost({ ...post, content: mod.content });
+        }
+      } catch {
+        setError('Failed to load article');
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  }, [post]);
+
+  return (
+    <div className="p-6">
+      {!post ? (
+        <div className="space-y-3">
+          {blogPosts.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setSelected(p.id)}
+              className="w-full text-left rounded-xl p-4 border border-[var(--macos-border)] bg-[var(--macos-surface)]/80 hover:bg-[var(--macos-surface)]"
+            >
+              <div className="text-[var(--macos-text-primary)] font-medium">{p.title}</div>
+              <div className="text-[var(--macos-text-secondary)] text-sm truncate">{p.description}</div>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <button onClick={() => setSelected(null)} className="text-sm text-[var(--macos-accent)]">← Back</button>
+          {isLoading ? (
+            <div className="text-[var(--macos-text-secondary)]">Loading…</div>
+          ) : error ? (
+            <div className="text-red-500">{error}</div>
+          ) : (
+            <BlogTemplate post={dynamicPost ?? post} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// GalleryApp removed for streamlined mobile home screen
+
+function SettingsApp({ wallpaper, onChange }: { wallpaper: WallpaperOption; onChange: (w: WallpaperOption) => void; }) {
+  const liveOptions: Array<{ id: WallpaperOption; label: string; desc: string; preview: React.ReactNode }> = [
+    {
+      id: 'video',
+      label: 'Live Wallpaper',
+      desc: 'Looping background animation',
+      preview: (
+        <div className="relative w-full h-24 rounded-lg overflow-hidden">
+          <video className="absolute inset-0 w-full h-full object-cover" src="/inouske-video.mp4" autoPlay muted playsInline loop />
+          <div className="absolute inset-0 bg-black/20" />
+        </div>
+      )
+    }
+  ];
+  const staticOptions: Array<{ id: WallpaperOption; label: string; desc: string; preview: React.ReactNode }> = [
+    {
+      id: 'mobile1',
+      label: 'Neon Skyline',
+      desc: 'Static image',
+      preview: (
+        <div className="w-full h-24 rounded-lg overflow-hidden bg-center bg-cover" style={{ backgroundImage: 'url(/mobile-wallpaper1.jpeg)' }} />
+      )
+    },
+    {
+      id: 'inouske',
+      label: 'Inouske',
+      desc: 'Static image',
+      preview: (
+        <div
+          className="w-full h-24 rounded-lg overflow-hidden bg-cover"
+          style={{ backgroundImage: 'url(/inouske.jpeg)', backgroundPosition: 'center 75%' }}
+        />
+      )
+    },
+    {
+      id: 'luffyPhone',
+      label: 'Luffy (Phone)',
+      desc: 'Static image',
+      preview: (
+        <div className="w-full h-24 rounded-lg overflow-hidden bg-center bg-cover" style={{ backgroundImage: 'url(/luffy-phone.jpg)' }} />
+      )
+    },
+    {
+      id: 'luffyKaido',
+      label: 'Luffy vs Kaido',
+      desc: 'Static image',
+      preview: (
+        <div className="w-full h-24 rounded-lg overflow-hidden bg-center bg-cover" style={{ backgroundImage: 'url(/luffy-kaido.jpeg)' }} />
+      )
+    }
+  ];
+  return (
+    <div className="p-6">
+      <div className="space-y-6">
+        <div>
+          <div className="text-xs uppercase tracking-wide text-[var(--macos-text-secondary)] mb-2">Live Wallpapers</div>
+          <div className="grid grid-cols-1 gap-3">
+            {liveOptions.map(opt => {
+              const active = wallpaper === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => onChange(opt.id)}
+                  className={`w-full text-left rounded-xl border transition-colors ${active ? 'border-[var(--macos-accent)] ring-2 ring-[var(--macos-accent)]/30' : 'border-[var(--macos-border)] hover:bg-[var(--macos-surface)]/60'}`}
+                >
+                  <div className="p-3 flex items-center gap-3">
+                    <div className="w-36 flex-shrink-0">{opt.preview}</div>
+                    <div>
+                      <div className="font-medium text-[var(--macos-text-primary)] flex items-center gap-2">
+                        {opt.label}
+                        {active && <span className="inline-block w-2 h-2 rounded-full bg-[var(--macos-accent)]" />}
+                      </div>
+                      <div className="text-xs text-[var(--macos-text-secondary)]">{opt.desc}</div>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <div className="text-xs uppercase tracking-wide text-[var(--macos-text-secondary)] mb-2">Static Wallpapers</div>
+          <div className="grid grid-cols-1 gap-3">
+            {staticOptions.map(opt => {
+              const active = wallpaper === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => onChange(opt.id)}
+                  className={`w-full text-left rounded-xl border transition-colors ${active ? 'border-[var(--macos-accent)] ring-2 ring-[var(--macos-accent)]/30' : 'border-[var(--macos-border)] hover:bg-[var(--macos-surface)]/60'}`}
+                >
+                  <div className="p-3 flex items-center gap-3">
+                    <div className="w-36 flex-shrink-0">{opt.preview}</div>
+                    <div>
+                      <div className="font-medium text-[var(--macos-text-primary)] flex items-center gap-2">
+                        {opt.label}
+                        {active && <span className="inline-block w-2 h-2 rounded-full bg-[var(--macos-accent)]" />}
+                      </div>
+                      <div className="text-xs text-[var(--macos-text-secondary)]">{opt.desc}</div>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

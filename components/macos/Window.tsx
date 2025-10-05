@@ -84,7 +84,7 @@ export default function Window({
   onTitleBarHoverChange,
   onFocus,
 }: WindowProps) {
-  const MENU_BAR_HEIGHT_PX = 32; // matches h-8 in MenuBar
+  const MENU_BAR_HEIGHT_PX = 32; // matches h-8 in MenuBar (base, safe-area added on element)
   const TITLE_BAR_HEIGHT_PX = 40; // matches h-10 in title bar
   const constraintsRef = useRef(null);
   const windowRef = useRef<HTMLDivElement>(null);
@@ -180,10 +180,15 @@ export default function Window({
           "z-[80]",
           className
         )}
+        data-role="macos-window"
         onMouseDown={() => onFocus?.()}
         style={{
-          width: isMaximized ? '100vw' : winWidth,
-          height: isMaximized ? (showTopChrome ? `calc(100vh - ${topOffsetPx}px)` : '100vh') : winHeight,
+          width: isMaximized ? '100svw' : winWidth,
+          height: isMaximized
+            ? (showTopChrome
+                ? `calc(100svh - ${topOffsetPx}px - env(safe-area-inset-bottom, 0px))`
+                : `calc(100svh - env(safe-area-inset-bottom, 0px))`)
+            : winHeight,
           x: isMaximized ? 0 : x,
           y: isMaximized ? (showTopChrome ? topOffsetPx : 0) : y,
           scale: isMaximized ? 1 : scale,
@@ -289,7 +294,11 @@ export default function Window({
         {/* Content */}
         <div 
           className="h-full overflow-auto"
-          style={{ height: isMaximized ? `calc(100% - ${showTopChrome ? TITLE_BAR_HEIGHT_PX : 0}px)` : `calc(100% - ${TITLE_BAR_HEIGHT_PX}px)` }}
+          style={{
+            height: isMaximized
+              ? `calc(100% - ${showTopChrome ? TITLE_BAR_HEIGHT_PX : 0}px)`
+              : `calc(100% - ${TITLE_BAR_HEIGHT_PX}px)`
+          }}
         >
           {children}
         </div>

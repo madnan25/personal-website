@@ -1,6 +1,8 @@
+"use client";
+
 export default function AboutContent() {
   return (
-    <article className="max-w-4xl mx-auto p-6 md:p-8 space-y-8 text-[var(--macos-text-secondary)]">
+    <article className="max-w-4xl mx-auto p-6 md:p-8 space-y-8 text-[var(--macos-text-secondary)] bg-[var(--macos-bg-secondary)]/80 backdrop-blur supports-[backdrop-filter]:bg-[var(--macos-bg-secondary)]/60 rounded-xl">
       <header>
         <h1 className="text-3xl md:text-4xl font-light text-[var(--macos-text-primary)] mb-3">Mohammad Dayem Adnan</h1>
         <p className="text-lg">I build teams, products, and repeatable wins.</p>

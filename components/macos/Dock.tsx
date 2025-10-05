@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { useDockContext } from "./DockContext";
 import { cn } from "@/lib/utils";
-import { User, Palette, Rocket, FileText, Mail, Settings, Trash2, FileVideo, TerminalSquare } from "lucide-react";
+import { User, Rocket, FileText, Mail, Settings, Trash2, FileVideo, TerminalSquare } from "lucide-react";
 
 interface DockItemProps {
   id: string;
@@ -71,7 +71,6 @@ export default function Dock({ className, onItemClick, minimizedIds = [], hidden
   
   const dockItems = [
     { icon: <User className="w-6 h-6" />, label: "About", id: "about" },
-    { icon: <Palette className="w-6 h-6" />, label: "Portfolio", id: "portfolio" },
     { icon: <Rocket className="w-6 h-6" />, label: "Projects", id: "projects" },
     { icon: <FileText className="w-6 h-6" />, label: "Blog", id: "blog" },
     { icon: <Mail className="w-6 h-6" />, label: "Contact", id: "contact" },
@@ -83,13 +82,17 @@ export default function Dock({ className, onItemClick, minimizedIds = [], hidden
   return (
     <motion.div
       className={cn(
-        "fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50",
+        "fixed left-1/2 transform -translate-x-1/2 z-50",
         className
       )}
       data-role="macos-dock"
       initial={{ y: 100, opacity: 0 }}
       animate={{ y: hidden ? 40 : 0, opacity: hidden ? 0 : 1 }}
       transition={{ type: "spring", damping: 20, stiffness: 300, delay: 0.2 }}
+      style={{
+        // Lift dock above safe area on devices like iPad/iPhone
+        bottom: 'max(16px, calc(env(safe-area-inset-bottom, 0px) + 8px))'
+      }}
     >
       <div
         className={cn(

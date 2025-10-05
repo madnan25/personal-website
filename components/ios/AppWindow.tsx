@@ -19,7 +19,7 @@ export default function AppWindow({
   isOpen, 
   onClose, 
   className,
-  backgroundColor = "bg-white"
+  backgroundColor = "bg-[var(--macos-bg-secondary)]"
 }: AppWindowProps) {
   const [dragY, setDragY] = useState(0);
 
@@ -49,7 +49,8 @@ export default function AppWindow({
       <motion.div
         className={cn(
           "absolute inset-x-0 bottom-0 top-20",
-          "rounded-t-3xl shadow-2xl",
+          // Flex container so inner content can scroll correctly
+          "rounded-t-3xl shadow-2xl flex flex-col min-h-0",
           backgroundColor,
           className
         )}
@@ -57,31 +58,33 @@ export default function AppWindow({
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        drag="y"
-        dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={0.1}
-        onDragEnd={handleDragEnd}
         style={{ y: dragY }}
       >
         {/* Drag Handle */}
-        <div className="flex justify-center pt-3 pb-2">
-          <div className="w-10 h-1 bg-gray-300 rounded-full" />
-        </div>
+        <motion.div
+          className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing"
+          drag="y"
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={0.1}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="w-10 h-1 rounded-full bg-[var(--macos-separator)]" />
+        </motion.div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-100">
-          <h1 className="text-xl font-semibold text-gray-900">
+        <div className="flex items-center justify-between px-6 py-3 border-b border-[var(--macos-border)]/40">
+          <h1 className="text-xl font-semibold text-[var(--macos-text-primary)]">
             {title}
           </h1>
           <motion.button
-            className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"
+            className="w-8 h-8 rounded-full bg-[var(--macos-surface)] flex items-center justify-center border border-[var(--macos-border)]"
             onClick={onClose}
             whileTap={{ scale: 0.9 }}
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path
                 d="M13 1L1 13M1 1L13 13"
-                stroke="#666"
+                stroke="currentColor"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -91,7 +94,7 @@ export default function AppWindow({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' as unknown as undefined, touchAction: 'pan-y' }}>
           {children}
         </div>
       </motion.div>

@@ -1,0 +1,2 @@
+20.11.1
+EOF; echo "Wrote .node-version requesting Node 20.11.1. Please ensure your environment respects it (asdf/volta/nvmrc)."

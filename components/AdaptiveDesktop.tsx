@@ -48,6 +48,9 @@ export default function AdaptiveDesktop() {
     );
   }
 
-  // Render appropriate interface
-  return isMobile ? <IOSDevice /> : <MacOSDesktop />;
+  // Route to iOS experience on mobile/tablet, macOS otherwise
+  if (isMobile) {
+    return <IOSDevice />;
+  }
+  return <MacOSDesktop />;
 }

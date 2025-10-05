@@ -3,9 +3,19 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import {
+  IoPersonCircleOutline,
+  IoRocketOutline,
+  IoNewspaperOutline,
+  IoSettingsOutline,
+  IoCallOutline,
+  IoChatbubbleEllipsesOutline,
+  IoGlobeOutline,
+  IoMusicalNotesOutline as IoSpotifyFallback
+} from "react-icons/io5";
 
 interface AppIconProps {
-  icon: string;
+  icon: React.ReactNode;
   label: string;
   gradient?: string;
   delay?: number;
@@ -30,17 +40,23 @@ const AppIcon = ({ icon, label, gradient, delay = 0, onClick }: AppIconProps) =>
     >
       <div
         className={cn(
-          "w-16 h-16 rounded-2xl flex items-center justify-center text-2xl",
-          "shadow-lg",
+          // Responsive icon size
+          "w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-2xl",
+          // iOS tile treatment: subtle border + shadow + glass
+          "ring-1 ring-white/10 shadow-[0_8px_20px_rgba(0,0,0,0.35)] backdrop-blur-md",
           gradient || "bg-gradient-to-br from-blue-400 to-blue-600"
         )}
         style={{
-          background: gradient ? undefined : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+          background: gradient ? undefined : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          // Fallback tint so tiles remain visible even if gradient utilities are purged
+          backgroundColor: 'rgba(255,255,255,0.06)'
         }}
       >
-        <span className="filter drop-shadow-sm">{icon}</span>
+        <span className="filter drop-shadow-sm text-white">{icon}</span>
       </div>
-      <span className="text-white text-xs font-medium text-center leading-tight max-w-16 truncate">
+      <span
+        className="inline-block text-white text-[10px] sm:text-xs font-medium text-center leading-tight max-w-16 truncate px-1.5 py-0.5 rounded-md bg-black/35 backdrop-blur-[2px] shadow-sm z-10"
+      >
         {label}
       </span>
     </motion.button>
@@ -56,83 +72,17 @@ export default function HomeScreen({ onAppOpen, className }: HomeScreenProps) {
   const [currentPage, setCurrentPage] = useState(0);
   
   const apps = [
-    { 
-      icon: "👤", 
-      label: "About", 
-      id: "about",
-      gradient: "bg-gradient-to-br from-gray-600 to-gray-800"
-    },
-    { 
-      icon: "🎨", 
-      label: "Portfolio", 
-      id: "portfolio",
-      gradient: "bg-gradient-to-br from-purple-500 to-purple-700"
-    },
-    { 
-      icon: "🚀", 
-      label: "Projects", 
-      id: "projects",
-      gradient: "bg-gradient-to-br from-orange-500 to-red-600"
-    },
-    { 
-      icon: "📝", 
-      label: "Blog", 
-      id: "blog",
-      gradient: "bg-gradient-to-br from-yellow-400 to-orange-500"
-    },
-    { 
-      icon: "💼", 
-      label: "Resume", 
-      id: "resume",
-      gradient: "bg-gradient-to-br from-blue-500 to-blue-700"
-    },
-    { 
-      icon: "📧", 
-      label: "Contact", 
-      id: "contact",
-      gradient: "bg-gradient-to-br from-green-500 to-green-700"
-    },
-    { 
-      icon: "⚙️", 
-      label: "Settings", 
-      id: "settings",
-      gradient: "bg-gradient-to-br from-gray-500 to-gray-700"
-    },
-    { 
-      icon: "📱", 
-      label: "Social", 
-      id: "social",
-      gradient: "bg-gradient-to-br from-pink-500 to-red-500"
-    },
-    { 
-      icon: "🎵", 
-      label: "Music", 
-      id: "music",
-      gradient: "bg-gradient-to-br from-red-500 to-pink-600"
-    },
-    { 
-      icon: "📷", 
-      label: "Photos", 
-      id: "photos",
-      gradient: "bg-gradient-to-br from-yellow-400 to-yellow-600"
-    },
-    { 
-      icon: "🌤️", 
-      label: "Weather", 
-      id: "weather",
-      gradient: "bg-gradient-to-br from-blue-400 to-cyan-500"
-    },
-    { 
-      icon: "🗺️", 
-      label: "Maps", 
-      id: "maps",
-      gradient: "bg-gradient-to-br from-green-400 to-green-600"
-    },
+    { icon: <IoPersonCircleOutline className="w-7 h-7" />, label: "About", id: "about", gradient: "bg-gradient-to-br from-gray-600 to-gray-800" },
+    { icon: <IoRocketOutline className="w-7 h-7" />, label: "Projects", id: "projects", gradient: "bg-gradient-to-br from-purple-500 to-purple-700" },
+    { icon: <IoNewspaperOutline className="w-7 h-7" />, label: "Blog", id: "blog", gradient: "bg-gradient-to-br from-yellow-400 to-orange-500" },
+    { icon: <IoSettingsOutline className="w-7 h-7" />, label: "Settings", id: "settings", gradient: "bg-gradient-to-br from-gray-500 to-gray-700" },
   ];
 
   return (
     <div className={cn(
-      "flex-1 pt-16 pb-8 px-6",
+      // Respect safe areas and adjust paddings per device size
+      "flex-1 pt-16 pb-8 px-4 sm:px-6",
+      // Prevent page scroll on home screen; windows manage their own scrolling
       "overflow-hidden",
       className
     )}>
@@ -154,7 +104,7 @@ export default function HomeScreen({ onAppOpen, className }: HomeScreenProps) {
       </div>
 
       {/* App grid */}
-      <div className="grid grid-cols-4 gap-6 auto-rows-max">
+      <div className="grid grid-cols-4 gap-4 sm:gap-6 auto-rows-max">
         {apps.map((app, index) => (
           <AppIcon
             key={app.id}
@@ -168,33 +118,13 @@ export default function HomeScreen({ onAppOpen, className }: HomeScreenProps) {
       </div>
 
       {/* Dock area - bottom apps */}
-      <div className="fixed bottom-8 left-6 right-6">
-        <div className="bg-white/20 backdrop-blur-xl rounded-2xl p-3">
-          <div className="flex justify-center space-x-6">
-            <AppIcon
-              icon="📞"
-              label="Phone"
-              gradient="bg-gradient-to-br from-green-500 to-green-700"
-              onClick={() => onAppOpen?.('phone')}
-            />
-            <AppIcon
-              icon="💬"
-              label="Messages"
-              gradient="bg-gradient-to-br from-green-400 to-green-600"
-              onClick={() => onAppOpen?.('messages')}
-            />
-            <AppIcon
-              icon="🌐"
-              label="Safari"
-              gradient="bg-gradient-to-br from-blue-500 to-blue-700"
-              onClick={() => onAppOpen?.('safari')}
-            />
-            <AppIcon
-              icon="🎵"
-              label="Spotify"
-              gradient="bg-gradient-to-br from-green-500 to-green-700"
-              onClick={() => onAppOpen?.('spotify')}
-            />
+      <div className="fixed left-4 right-4 sm:left-6 sm:right-6" style={{ bottom: 'max(16px, calc(env(safe-area-inset-bottom, 0px) + 8px))' }}>
+        <div className="rounded-2xl p-0">
+          <div className="flex justify-center space-x-4 sm:space-x-6">
+            <AppIcon icon={<IoCallOutline className="w-7 h-7" />} label="Phone" gradient="bg-gradient-to-br from-green-500 to-green-700" onClick={() => onAppOpen?.('phone')} />
+            <AppIcon icon={<IoChatbubbleEllipsesOutline className="w-7 h-7" />} label="Messages" gradient="bg-gradient-to-br from-green-400 to-green-600" onClick={() => onAppOpen?.('messages')} />
+            <AppIcon icon={<IoGlobeOutline className="w-7 h-7" />} label="Safari" gradient="bg-gradient-to-br from-blue-500 to-blue-700" onClick={() => onAppOpen?.('safari')} />
+            <AppIcon icon={<IoSpotifyFallback className="w-7 h-7" />} label="Spotify" gradient="bg-gradient-to-br from-green-500 to-green-700" onClick={() => onAppOpen?.('spotify')} />
           </div>
         </div>
       </div>

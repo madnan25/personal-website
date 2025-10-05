@@ -328,7 +328,24 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
   };
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden">
+    <div
+      className="relative overflow-hidden"
+      style={{
+        // Use dynamic viewport units and safe-area to avoid cutoffs across iOS Safari and iPad
+        width: '100svw',
+        height: 'calc(100svh + env(safe-area-inset-bottom, 0px))',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)'
+      }}
+      onContextMenu={(e) => {
+        // Allow browser menu only when right-clicking the menu bar
+        const target = e.target as HTMLElement;
+        if (target.closest('[data-role="macos-menubar"]')) return;
+        // Suppress default and show custom menu via event dispatch
+        e.preventDefault();
+        const evt = new CustomEvent('macos-desktop-context', { detail: { x: e.clientX, y: e.clientY } });
+        window.dispatchEvent(evt);
+      }}
+    >
       {/* Desktop Wallpaper */}
       <DesktopWallpaper imageSrc={wallpaperSrc} imageAlt="Eagle flying over forest" />
       {/* Desktop Shortcuts - keep behind any windows */}
@@ -371,8 +388,11 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
 
       <div 
         className="fixed inset-x-0 top-0 z-[90]"
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
-        <MenuBar hidden={isAnyMaximized && !isTopHover} onMouseLeave={hideBarsWithDelay} onOpenWindow={(id) => openWindowById(id)} />
+        <div data-role="macos-menubar">
+          <MenuBar hidden={isAnyMaximized && !isTopHover} onMouseLeave={hideBarsWithDelay} onOpenWindow={(id) => openWindowById(id)} />
+        </div>
       </div>
       
       {/* Windows */}
@@ -430,6 +450,7 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
               <AboutWindow 
                 initialScrollTop={scrollMemory['about'] ?? 0}
                 onScrollTopChange={(t) => setScrollMemory(prev => ({ ...prev, about: t }))}
+                onOpenWindow={(id) => openWindowById(id)}
               />
             ) : window.id === 'settings' ? (
               <SettingsWindow 
@@ -477,6 +498,13 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
         minimizedIds={windows.filter(w => w.isOpen || w.isMinimized).map(w => w.id)}
         hidden={isAnyMaximized}
       />
+
+      {/* Custom context menu */}
+      <DesktopContextMenu 
+        onGetInfo={() => openWindowById('about')} 
+        onChangeWallpaper={() => openWindowById('settings')} 
+        onOpenTerminal={() => openWindowById('terminal')} 
+      />
     </div>
   );
 }
@@ -489,8 +517,59 @@ export default function MacOSDesktop({ initialSelectedBlogId, initialOpenWindow 
   );
 }
 
+// Desktop right-click context menu
+function DesktopContextMenu({ onGetInfo, onChangeWallpaper, onOpenTerminal }: { onGetInfo: () => void; onChangeWallpaper: () => void; onOpenTerminal: () => void }) {
+  const [visible, setVisible] = useState(false);
+  const [pos, setPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  useEffect(() => {
+    const show = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { x: number; y: number } | undefined;
+      if (!detail) return;
+      setPos(detail);
+      setVisible(true);
+    };
+    const hide = () => setVisible(false);
+    window.addEventListener('macos-desktop-context', show as EventListener);
+    window.addEventListener('click', hide);
+    window.addEventListener('scroll', hide, true);
+    return () => {
+      window.removeEventListener('macos-desktop-context', show as EventListener);
+      window.removeEventListener('click', hide);
+      window.removeEventListener('scroll', hide, true);
+    };
+  }, []);
+  if (!visible) return null;
+  return (
+    <div
+      className="fixed z-[200] min-w-[220px] rounded-lg border border-[var(--macos-border)] bg-[var(--macos-surface-elevated)] backdrop-blur-xl shadow-2xl py-2"
+      style={{ left: pos.x + 4, top: pos.y + 4 }}
+      role="menu"
+    >
+      <button
+        className="w-full text-left px-3 py-2 text-[13px] macos-hover text-[var(--macos-text-primary)]"
+        onClick={() => { onGetInfo(); setVisible(false); }}
+      >
+        Get Info
+      </button>
+      <button
+        className="w-full text-left px-3 py-2 text-[13px] macos-hover text-[var(--macos-text-primary)]"
+        onClick={() => { onChangeWallpaper(); setVisible(false); }}
+      >
+        Change Wallpaper…
+      </button>
+      <div className="my-2 h-px bg-[var(--macos-separator)]" />
+      <button
+        className="w-full text-left px-3 py-2 text-[13px] macos-hover text-[var(--macos-text-primary)]"
+        onClick={() => { onOpenTerminal(); setVisible(false); }}
+      >
+        Open Terminal
+      </button>
+    </div>
+  );
+}
+
 // About Window Content Component
-function AboutWindow({ initialScrollTop = 0, onScrollTopChange }: { initialScrollTop?: number; onScrollTopChange?: (t: number) => void; }) {
+function AboutWindow({ initialScrollTop = 0, onScrollTopChange, onOpenWindow }: { initialScrollTop?: number; onScrollTopChange?: (t: number) => void; onOpenWindow?: (id: string) => void; }) {
   const containerRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     if (containerRef.current) {
@@ -507,7 +586,7 @@ function AboutWindow({ initialScrollTop = 0, onScrollTopChange }: { initialScrol
             <UserIcon className="w-12 h-12 text-white" />
           </motion.div>
           
-          <motion.h1 className="text-4xl font-light text-[var(--macos-text-primary)] mb-3">
+          <motion.h1 className="text-4xl font-light text-[var(--macos-text-primary)] mb-3 shine-text">
             Mohammad Dayem Adnan
           </motion.h1>
           
@@ -530,9 +609,10 @@ function AboutWindow({ initialScrollTop = 0, onScrollTopChange }: { initialScrol
         {/* Content */}
         <motion.div className="space-y-8">
           <div>
-            <h2 className="text-2xl font-semibold text-[var(--macos-text-primary)] mb-3">
+            <h2 className="text-2xl font-semibold text-[var(--macos-accent)] mb-2">
               About me
             </h2>
+            <div className="h-[2px] w-12 bg-[var(--macos-accent)] rounded-full mb-3" />
             <p className="text-lg leading-relaxed text-[var(--macos-text-secondary)] mb-4">
               I’m a builder who loves turning ideas into working systems—brands that resonate, products people use, and campaigns that actually pay for themselves. I’ve managed $1.2M/year in marketing budgets and shipped programs that turn $30k into $2.6M in revenue (~86× ROAS).
             </p>
@@ -543,7 +623,7 @@ function AboutWindow({ initialScrollTop = 0, onScrollTopChange }: { initialScrol
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
-              <h3 className="text-xl font-semibold text-[var(--macos-text-primary)] mb-4">Core Expertise</h3>
+              <h3 className="text-xl font-semibold text-[var(--macos-accent)] mb-4">Core Expertise</h3>
               <div className="space-y-2">
                 {[
                   'Growth Marketing',
@@ -561,7 +641,7 @@ function AboutWindow({ initialScrollTop = 0, onScrollTopChange }: { initialScrol
             </div>
 
             <div>
-              <h3 className="text-xl font-semibold text-[var(--macos-text-primary)] mb-4">Current Focus</h3>
+              <h3 className="text-xl font-semibold text-[var(--macos-accent)] mb-4">Current Focus</h3>
               <div className="space-y-3">
                 <div className="flex items-start space-x-3">
                   <span className="text-lg">🏔️</span>
@@ -589,7 +669,7 @@ function AboutWindow({ initialScrollTop = 0, onScrollTopChange }: { initialScrol
           </div>
 
           <div>
-            <h3 className="text-xl font-semibold text-[var(--macos-text-primary)] mb-4">Selected Wins</h3>
+            <h3 className="text-xl font-semibold text-[var(--macos-accent)] mb-4">Selected Wins</h3>
             <div className="space-y-2">
               {[
                 '$1.2M annual budget managed across brand, performance, and content',
@@ -605,7 +685,7 @@ function AboutWindow({ initialScrollTop = 0, onScrollTopChange }: { initialScrol
           </div>
 
           <div>
-            <h3 className="text-xl font-semibold text-[var(--macos-text-primary)] mb-4">Advisory & Community</h3>
+            <h3 className="text-xl font-semibold text-[var(--macos-accent)] mb-4">Advisory & Community</h3>
             <p className="text-[var(--macos-text-secondary)]">
               Board of Advisors, Pakistan Ecommerce Association — supporting practical growth and standards for the ecosystem.
             </p>
@@ -618,13 +698,15 @@ function AboutWindow({ initialScrollTop = 0, onScrollTopChange }: { initialScrol
                 className="px-6 py-3 bg-[var(--macos-accent)] text-white rounded-lg font-medium hover:bg-[var(--macos-accent-hover)] transition-colors duration-200"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
+                onClick={() => onOpenWindow?.('projects')}
               >
-                View Portfolio
+                View Projects
               </motion.button>
               <motion.button
                 className="px-6 py-3 border border-[var(--macos-border)] text-[var(--macos-text-primary)] rounded-lg font-medium hover:bg-[var(--macos-surface)] transition-colors duration-200"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
+                onClick={() => onOpenWindow?.('contact')}
               >
                 Get in Touch
               </motion.button>
