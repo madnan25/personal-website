@@ -767,6 +767,12 @@ function ContactWindow({ initialScrollTop = 0, onScrollTopChange }: { initialScr
       setResult({ ok: false, message: 'Network error. Please try again.' });
     } finally {
       setIsSubmitting(false);
+      // Always reset the widget so a fresh token is required for the next submit
+      try {
+        const api = (window as unknown as { turnstile?: { reset: (id?: string) => void } }).turnstile;
+        api?.reset(widgetIdRef.current);
+      } catch {}
+      setTurnstileToken('');
     }
   };
   return (
