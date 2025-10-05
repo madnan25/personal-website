@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AboutContent from "@/components/hero/AboutContent";
 
 export const dynamic = "error";
 export const revalidate = false;
@@ -27,8 +28,8 @@ export const metadata: Metadata = {
   }
 };
 
-export default function AboutStub() {
-  return null;
+export default function AboutSSR() {
+  return <AboutContent />;
 }
 
 
