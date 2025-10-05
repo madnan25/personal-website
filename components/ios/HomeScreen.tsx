@@ -7,11 +7,10 @@ import {
   IoPersonCircleOutline,
   IoRocketOutline,
   IoNewspaperOutline,
-  IoSettingsOutline,
   IoCallOutline,
   IoChatbubbleEllipsesOutline,
-  IoGlobeOutline,
-  IoMusicalNotesOutline as IoSpotifyFallback
+  IoMusicalNotesOutline as IoSpotifyFallback,
+  IoImagesOutline
 } from "react-icons/io5";
 
 interface AppIconProps {
@@ -43,16 +42,16 @@ const AppIcon = ({ icon, label, gradient, delay = 0, onClick }: AppIconProps) =>
           // Responsive icon size
           "w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-2xl",
           // iOS tile treatment: subtle border + shadow + glass
-          "ring-1 ring-white/10 shadow-[0_8px_20px_rgba(0,0,0,0.35)] backdrop-blur-md",
-          gradient || "bg-gradient-to-br from-blue-400 to-blue-600"
+          "ring-1 ring-white/10 shadow-[0_8px_20px_rgba(0,0,0,0.35)] backdrop-blur-md relative overflow-hidden",
+          gradient || "bg-gradient-to-br from-blue-400 to-blue-600",
         )}
         style={{
           background: gradient ? undefined : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           // Fallback tint so tiles remain visible even if gradient utilities are purged
-          backgroundColor: 'rgba(255,255,255,0.06)'
+          backgroundColor: gradient ? undefined : 'rgba(255,255,255,0.06)'
         }}
       >
-        <span className="filter drop-shadow-sm text-white">{icon}</span>
+        <span className="filter drop-shadow-sm text-white relative z-[1]">{icon}</span>
       </div>
       <span
         className="inline-block text-white text-[10px] sm:text-xs font-medium text-center leading-tight max-w-16 truncate px-1.5 py-0.5 rounded-md bg-black/35 backdrop-blur-[2px] shadow-sm z-10"
@@ -75,7 +74,7 @@ export default function HomeScreen({ onAppOpen, className }: HomeScreenProps) {
     { icon: <IoPersonCircleOutline className="w-7 h-7" />, label: "About", id: "about", gradient: "bg-gradient-to-br from-gray-600 to-gray-800" },
     { icon: <IoRocketOutline className="w-7 h-7" />, label: "Projects", id: "projects", gradient: "bg-gradient-to-br from-purple-500 to-purple-700" },
     { icon: <IoNewspaperOutline className="w-7 h-7" />, label: "Blog", id: "blog", gradient: "bg-gradient-to-br from-yellow-400 to-orange-500" },
-    { icon: <IoSettingsOutline className="w-7 h-7" />, label: "Settings", id: "settings", gradient: "bg-gradient-to-br from-gray-500 to-gray-700" },
+    { icon: <img src="/settings.png" alt="Settings" className="w-11 h-11 sm:w-12 sm:h-12 object-contain" />, label: "Settings", id: "settings", gradient: "bg-gradient-to-br from-gray-500 to-gray-700" },
   ];
 
   return (
@@ -121,10 +120,9 @@ export default function HomeScreen({ onAppOpen, className }: HomeScreenProps) {
       <div className="fixed left-4 right-4 sm:left-6 sm:right-6" style={{ bottom: 'max(16px, calc(env(safe-area-inset-bottom, 0px) + 8px))' }}>
         <div className="rounded-2xl p-0">
           <div className="flex justify-center space-x-4 sm:space-x-6">
-            <AppIcon icon={<IoCallOutline className="w-7 h-7" />} label="Phone" gradient="bg-gradient-to-br from-green-500 to-green-700" onClick={() => onAppOpen?.('phone')} />
-            <AppIcon icon={<IoChatbubbleEllipsesOutline className="w-7 h-7" />} label="Messages" gradient="bg-gradient-to-br from-green-400 to-green-600" onClick={() => onAppOpen?.('messages')} />
-            <AppIcon icon={<IoGlobeOutline className="w-7 h-7" />} label="Safari" gradient="bg-gradient-to-br from-blue-500 to-blue-700" onClick={() => onAppOpen?.('safari')} />
-            <AppIcon icon={<IoSpotifyFallback className="w-7 h-7" />} label="Spotify" gradient="bg-gradient-to-br from-green-500 to-green-700" onClick={() => onAppOpen?.('spotify')} />
+            <AppIcon icon={<IoCallOutline className="w-7 h-7" />} label="Contact" gradient="bg-gradient-to-br from-green-500 to-green-700" onClick={() => onAppOpen?.('contact')} />
+            <AppIcon icon={<img src="/discord.png" alt="Discord" className="w-11 h-11 sm:w-12 sm:h-12 object-contain" />} label="Discord" gradient="bg-gradient-to-br from-indigo-500 to-violet-600" onClick={() => window.open('https://discord.com/invite/dnrfSMgCvV','_blank','noopener,noreferrer')} />
+            <AppIcon icon={<img src="/photos-ios.png" alt="Photos" className="w-11 h-11 sm:w-12 sm:h-12 object-contain" />} label="Photos" gradient="bg-white" onClick={() => onAppOpen?.('gallery')} />
           </div>
         </div>
       </div>

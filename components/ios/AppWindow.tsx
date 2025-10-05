@@ -58,7 +58,7 @@ export default function AppWindow({
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        style={{ y: dragY }}
+        style={{ y: dragY, transform: 'translateZ(0)' }}
       >
         {/* Drag Handle */}
         <motion.div
@@ -94,8 +94,10 @@ export default function AppWindow({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' as unknown as undefined, touchAction: 'pan-y' }}>
-          {children}
+        <div className="flex-1 overflow-auto overscroll-contain relative" style={{ WebkitOverflowScrolling: 'touch' as unknown as undefined, touchAction: 'pan-y' }}>
+          <div className="relative z-10">
+            {children}
+          </div>
         </div>
       </motion.div>
     </motion.div>

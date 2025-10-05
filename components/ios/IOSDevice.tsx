@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion, PanInfo } from "framer-motion";
 import StatusBar from "./StatusBar";
 import HomeScreen from "./HomeScreen";
@@ -8,6 +8,18 @@ import AppWindow from "./AppWindow";
 import ControlCenter from "./ControlCenter";
 import { blogPosts } from "@/lib/blog";
 import BlogTemplate from "@/components/blog/BlogTemplate";
+import { Calendar, Linkedin } from "lucide-react";
+
+// Declare Cloudflare Turnstile on the window to satisfy TypeScript during build
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (container: HTMLElement, options: Record<string, unknown>) => string;
+      remove: (widgetId: string) => void;
+      reset: (widgetId: string) => void;
+    };
+  }
+}
 
 interface AppState {
   id: string;
@@ -54,6 +66,18 @@ export default function IOSDevice() {
       title: 'Projects',
       isOpen: false,
       component: <ProjectsApp />
+    },
+    contact: {
+      id: 'contact',
+      title: 'Contact',
+      isOpen: false,
+      component: <ContactApp />
+    },
+    gallery: {
+      id: 'gallery',
+      title: 'Photos',
+      isOpen: false,
+      component: <GalleryApp />
     },
     settings: {
       id: 'settings',
@@ -110,10 +134,10 @@ export default function IOSDevice() {
             loop
           />
         ) : (
-          <motion.div
+        <motion.div
             className="absolute inset-0 bg-center bg-cover"
             initial={{ scale: 1.05, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
+          animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 1.2, ease: "easeOut" }}
             style={{ backgroundImage: `url(${(() => {
               switch (wallpaper) {
@@ -144,8 +168,8 @@ export default function IOSDevice() {
 
       <StatusBar />
       {/* Prevent background scroll when any window is open by toggling pointer events */}
-      <div className={apps.about.isOpen || apps.blog.isOpen || apps.projects.isOpen || apps.settings.isOpen ? 'pointer-events-none' : ''}>
-        <HomeScreen onAppOpen={handleAppOpen} />
+      <div className={apps.about.isOpen || apps.blog.isOpen || apps.projects.isOpen || apps.contact.isOpen || apps.gallery.isOpen || apps.settings.isOpen ? 'pointer-events-none' : ''}>
+      <HomeScreen onAppOpen={handleAppOpen} />
       </div>
       
       {Object.entries(apps).map(([id, app]) => (
@@ -231,29 +255,205 @@ function ProjectsApp() {
 }
 
 function ContactApp() {
+  const [form, setForm] = useState<{ name: string; email: string; phone: string; subject: 'speaking' | 'work' | 'other'; message: string }>({ name: '', email: '', phone: '', subject: 'speaking', message: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
+  const widgetContainerRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string | undefined>(undefined);
+
+  // Load and render Cloudflare Turnstile widget
+  useEffect(() => {
+    if (typeof window !== 'undefined' && widgetContainerRef.current && !widgetIdRef.current) {
+      const script = document.createElement('script');
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        if (window.turnstile && widgetContainerRef.current) {
+          widgetIdRef.current = window.turnstile.render(widgetContainerRef.current, {
+            sitekey: '0x4AAAAAAABkMYinukE8nz0Y',
+            callback: (token: string) => setTurnstileToken(token),
+            'expired-callback': () => setTurnstileToken(''),
+            'error-callback': () => setTurnstileToken(''),
+          });
+        }
+      };
+      document.head.appendChild(script);
+    }
+    return () => {
+      if (widgetIdRef.current && window.turnstile) {
+        window.turnstile.remove(widgetIdRef.current);
+        widgetIdRef.current = undefined;
+      }
+    };
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!turnstileToken) {
+      setResult({ ok: false, message: 'Please complete the verification.' });
+      return;
+    }
+    setIsSubmitting(true);
+    setResult(null);
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, turnstileToken }),
+      });
+      const data = await res.json();
+      setResult({ ok: res.ok, message: data.message || (res.ok ? 'Message sent!' : 'Failed to send message.') });
+      if (res.ok) {
+        setForm({ name: '', email: '', phone: '', subject: 'speaking', message: '' });
+        if (widgetIdRef.current && window.turnstile) {
+          window.turnstile.reset(widgetIdRef.current);
+        }
+        setTurnstileToken('');
+      }
+    } catch (error) {
+      setResult({ ok: false, message: 'Network error. Please try again.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
-    <div className="p-6">
-      <h2 className="text-xl font-bold text-[var(--macos-text-primary)] mb-4">Get in Touch</h2>
-      <div className="space-y-4">
-        <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-          <div className="w-10 h-10 bg-[var(--macos-accent)] rounded-full flex items-center justify-center">
-            <span className="text-white">📧</span>
+    <div className="p-4" style={{ position: 'relative', zIndex: 1, isolation: 'isolate' }}>
+      <div className="max-w-2xl mx-auto">
+        <div className="mb-8">
+          <div className="text-xl font-semibold text-[var(--macos-text-primary)] mb-1">Get in touch</div>
+          <div className="text-sm text-[var(--macos-text-secondary)]">I usually reply within a day.</div>
+        </div>
+
+        {result && (
+          <div className={`mb-6 text-sm rounded-xl border px-4 py-3 ${result.ok ? 'border-teal-500/40 text-teal-600 bg-teal-500/5' : 'border-red-500/40 text-red-600 bg-red-500/5'}`}>{result.message}</div>
+        )}
+
+        <form className="space-y-6" onSubmit={handleSubmit}>
+          <div className="space-y-5">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="contact-name" className="text-sm font-medium text-[var(--macos-text-primary)]">Name<span className="text-red-500 ml-1">*</span></label>
+              <input 
+                id="contact-name" 
+                name="name" 
+                required 
+                placeholder="Your name" 
+                value={form.name} 
+                onChange={(e) => setForm(s => ({ ...s, name: e.target.value }))} 
+                disabled={isSubmitting} 
+                className="px-4 py-3 rounded-xl border border-[var(--macos-border)] bg-[var(--macos-surface)] text-[var(--macos-text-primary)] placeholder:text-[var(--macos-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--macos-accent)] focus:border-transparent disabled:opacity-50 text-base" 
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="contact-email" className="text-sm font-medium text-[var(--macos-text-primary)]">Email<span className="text-red-500 ml-1">*</span></label>
+              <input 
+                id="contact-email" 
+                name="email" 
+                type="email" 
+                required 
+                placeholder="your@email.com" 
+                value={form.email} 
+                onChange={(e) => setForm(s => ({ ...s, email: e.target.value }))} 
+                disabled={isSubmitting} 
+                className="px-4 py-3 rounded-xl border border-[var(--macos-border)] bg-[var(--macos-surface)] text-[var(--macos-text-primary)] placeholder:text-[var(--macos-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--macos-accent)] focus:border-transparent disabled:opacity-50 text-base" 
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="contact-phone" className="text-sm font-medium text-[var(--macos-text-primary)]">Phone</label>
+              <input 
+                id="contact-phone" 
+                name="phone" 
+                type="tel" 
+                placeholder="+1 (555) 123-4567" 
+                value={form.phone} 
+                onChange={(e) => setForm(s => ({ ...s, phone: e.target.value }))} 
+                disabled={isSubmitting} 
+                className="px-4 py-3 rounded-xl border border-[var(--macos-border)] bg-[var(--macos-surface)] text-[var(--macos-text-primary)] placeholder:text-[var(--macos-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--macos-accent)] focus:border-transparent disabled:opacity-50 text-base" 
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="contact-subject" className="text-sm font-medium text-[var(--macos-text-primary)]">Subject<span className="text-red-500 ml-1">*</span></label>
+              <select 
+                id="contact-subject" 
+                name="subject" 
+                required 
+                value={form.subject} 
+                onChange={(e) => setForm(s => ({ ...s, subject: e.target.value as 'speaking' | 'work' | 'other' }))} 
+                disabled={isSubmitting} 
+                className="px-4 py-3 rounded-xl border border-[var(--macos-border)] bg-[var(--macos-surface)] text-[var(--macos-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--macos-accent)] focus:border-transparent disabled:opacity-50 text-base"
+              >
+                <option value="speaking">Speaking</option>
+                <option value="work">Work</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="contact-message" className="text-sm font-medium text-[var(--macos-text-primary)]">Message<span className="text-red-500 ml-1">*</span></label>
+              <textarea 
+                id="contact-message" 
+                name="message" 
+                required 
+                placeholder="Tell me about your project..." 
+                rows={5} 
+                value={form.message} 
+                onChange={(e) => setForm(s => ({ ...s, message: e.target.value }))} 
+                disabled={isSubmitting} 
+                className="px-4 py-3 rounded-xl border border-[var(--macos-border)] bg-[var(--macos-surface)] text-[var(--macos-text-primary)] placeholder:text-[var(--macos-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--macos-accent)] focus:border-transparent disabled:opacity-50 resize-none text-base" 
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div ref={widgetContainerRef} className="flex justify-center" />
+            <button 
+              type="submit" 
+              disabled={isSubmitting || !turnstileToken} 
+              className="w-full px-6 py-4 bg-[var(--macos-accent)] text-white rounded-xl font-semibold text-base hover:bg-[var(--macos-accent-hover)] active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+            >
+              {isSubmitting ? 'Sending…' : 'Send Message'}
+            </button>
+          </div>
+
+          <div className="my-6 border-t border-[var(--macos-separator)]" />
+
+          <div className="space-y-3">
+            <div className="text-sm font-medium text-[var(--macos-text-secondary)]">Other ways to reach me</div>
+            <div className="flex flex-col gap-3">
+              <a 
+                href="https://cal.com/madnan" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                aria-label="Book a meeting on Cal.com" 
+                className="flex items-center gap-3 p-4 rounded-xl border border-[var(--macos-border)] bg-[var(--macos-surface)] hover:bg-[var(--macos-surface)]/80 active:scale-95 transition-all duration-200"
+              >
+                <div className="w-10 h-10 rounded-full bg-[var(--macos-accent)] flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <div className="font-medium text-[var(--macos-text-primary)]">Book A Meeting</div>
+                  <div className="text-sm text-[var(--macos-text-secondary)]">Schedule a call with me</div>
+        </div>
+              </a>
+              <a 
+                href="https://www.linkedin.com/in/mdayemadnan/" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                aria-label="LinkedIn profile" 
+                className="flex items-center gap-3 p-4 rounded-xl border border-[var(--macos-border)] bg-[var(--macos-surface)] hover:bg-[var(--macos-surface)]/80 active:scale-95 transition-all duration-200"
+              >
+                <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
+                  <Linkedin className="w-5 h-5 text-white" />
           </div>
           <div>
-            <div className="font-medium text-[var(--macos-text-primary)]">Email</div>
-            <div className="text-sm text-[var(--macos-text-secondary)]">hello@mdadnan.com</div>
+                  <div className="font-medium text-[var(--macos-text-primary)]">LinkedIn</div>
+                  <div className="text-sm text-[var(--macos-text-secondary)]">Connect with me professionally</div>
+                </div>
+              </a>
+            </div>
           </div>
-        </div>
-        
-        <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-          <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-            <span className="text-white">💼</span>
-          </div>
-          <div>
-            <div className="font-medium text-[var(--macos-text-primary)]">LinkedIn</div>
-            <div className="text-sm text-[var(--macos-text-secondary)]">@mdadnan</div>
-          </div>
-        </div>
+        </form>
       </div>
     </div>
   );
@@ -321,7 +521,96 @@ function BlogApp() {
   );
 }
 
-// GalleryApp removed for streamlined mobile home screen
+function GalleryApp() {
+  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
+
+  const videos = [
+    {
+      id: 'naughty',
+      title: 'naughty video',
+      duration: '3:33',
+      thumbnail: '/naughty-blur.jpg', // Provided blurred thumbnail
+      videoId: 'dQw4w9WgXcQ'
+    }
+  ];
+
+  if (selectedVideo) {
+    const video = videos.find(v => v.id === selectedVideo);
+    return (
+      <div className="p-4">
+        <div className="mb-4">
+          <button 
+            onClick={() => setSelectedVideo(null)}
+            className="flex items-center gap-2 text-[var(--macos-accent)] hover:text-[var(--macos-accent-hover)] transition-colors"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Back to Photos
+          </button>
+        </div>
+        <div className="aspect-video bg-black rounded-xl overflow-hidden">
+          <iframe
+            width="100%"
+            height="100%"
+            src={`https://www.youtube.com/embed/${video?.videoId}?autoplay=1&rel=0`}
+            title={video?.title}
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className="w-full h-full"
+          />
+        </div>
+        <div className="mt-4">
+          <h3 className="text-lg font-semibold text-[var(--macos-text-primary)]">{video?.title}</h3>
+          <p className="text-sm text-[var(--macos-text-secondary)]">Duration: {video?.duration}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4">
+      <div className="mb-4">
+        <p className="text-sm text-[var(--macos-text-secondary)]">Your photo and video library</p>
+      </div>
+      
+      <div className="grid grid-cols-3 gap-2">
+        {videos.map((video) => (
+          <div key={video.id} className="space-y-1 select-none">
+            <motion.button
+              onClick={() => setSelectedVideo(video.id)}
+              className="relative aspect-square bg-[var(--macos-surface)] rounded-lg overflow-hidden w-full block"
+              whileTap={{ scale: 0.95 }}
+            >
+              <div 
+                className="absolute inset-0 bg-cover bg-center"
+                style={{ backgroundImage: `url(${video.thumbnail})` }}
+              />
+              <div className="absolute inset-0 bg-black/20" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-black/60 flex items-center justify-center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M8 5V19L19 12L8 5Z" fill="white"/>
+                  </svg>
+                </div>
+              </div>
+              <div className="absolute top-1 right-1">
+                <div className="px-1.5 py-0.5 bg-red-500/90 rounded-full">
+                  <span className="text-white text-xs font-medium">18+</span>
+                </div>
+              </div>
+            </motion.button>
+            <div className="px-0.5">
+              <div className="text-[13px] leading-tight text-[var(--macos-text-primary)] truncate">{video.title}</div>
+              <div className="text-[11px] text-[var(--macos-text-secondary)]">{video.duration}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function SettingsApp({ wallpaper, onChange }: { wallpaper: WallpaperOption; onChange: (w: WallpaperOption) => void; }) {
   const liveOptions: Array<{ id: WallpaperOption; label: string; desc: string; preview: React.ReactNode }> = [
@@ -423,8 +712,8 @@ function SettingsApp({ wallpaper, onChange }: { wallpaper: WallpaperOption; onCh
                         {active && <span className="inline-block w-2 h-2 rounded-full bg-[var(--macos-accent)]" />}
                       </div>
                       <div className="text-xs text-[var(--macos-text-secondary)]">{opt.desc}</div>
-                    </div>
-                  </div>
+      </div>
+    </div>
                 </button>
               );
             })}
