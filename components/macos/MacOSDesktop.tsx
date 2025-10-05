@@ -699,20 +699,61 @@ function ContactWindow({ initialScrollTop = 0, onScrollTopChange }: { initialScr
   const [form, setForm] = useState<{ name: string; email: string; phone: string; subject: 'speaking' | 'work' | 'other'; message: string }>({ name: '', email: '', phone: '', subject: 'speaking', message: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
+  const widgetContainerRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string | undefined>(undefined);
   useLayoutEffect(() => {
     if (containerRef.current) containerRef.current.scrollTop = initialScrollTop;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Load and render Cloudflare Turnstile widget
+  useEffect(() => {
+    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    if (!siteKey) return;
+    type TurnstileAPI = { render: (el: Element, opts: Record<string, unknown>) => string | undefined; reset: (id?: string) => void };
+    const getAPI = (): TurnstileAPI | undefined => (window as unknown as { turnstile?: TurnstileAPI }).turnstile;
+    const renderWidget = () => {
+      const api = getAPI();
+      if (!api || !widgetContainerRef.current) return;
+      if (widgetIdRef.current) api.reset(widgetIdRef.current);
+      widgetIdRef.current = api.render(widgetContainerRef.current, {
+        sitekey: siteKey,
+        callback: (token: string) => setTurnstileToken(token),
+        'error-callback': () => setTurnstileToken(''),
+        'expired-callback': () => setTurnstileToken(''),
+      });
+    };
+    if (getAPI()) {
+      renderWidget();
+      return;
+    }
+    let script = document.getElementById('cf-turnstile') as HTMLScriptElement | null;
+    if (!script) {
+      script = document.createElement('script');
+      script.id = 'cf-turnstile';
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      script.async = true;
+      script.defer = true;
+      script.onload = renderWidget;
+      document.head.appendChild(script);
+    } else {
+      script.addEventListener('load', renderWidget, { once: true });
+    }
+  }, []);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.email) return;
+    if (!turnstileToken) {
+      setResult({ ok: false, message: 'Please complete the verification.' });
+      return;
+    }
     setIsSubmitting(true);
     setResult(null);
     try {
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
+        body: JSON.stringify({ ...form, turnstileToken })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -720,6 +761,7 @@ function ContactWindow({ initialScrollTop = 0, onScrollTopChange }: { initialScr
       } else {
         setResult({ ok: true, message: 'Thanks! Your message has been sent.' });
         setForm({ name: '', email: '', phone: '', subject: 'speaking', message: '' });
+        setTurnstileToken('');
       }
     } catch {
       setResult({ ok: false, message: 'Network error. Please try again.' });
@@ -772,6 +814,8 @@ function ContactWindow({ initialScrollTop = 0, onScrollTopChange }: { initialScr
           </div>
 
           <div className="flex items-center justify-end pt-2">
+            <div className="flex-1" />
+            <div ref={widgetContainerRef} className="mr-3" aria-hidden={false} />
             <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-[var(--macos-accent)] text-white rounded-md font-medium hover:bg-[var(--macos-accent-hover)] transition-colors disabled:opacity-50">{isSubmitting ? 'Sending…' : 'Send'}</button>
           </div>
 
@@ -808,6 +852,14 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
     // run only on mount to restore position
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Persist latest scroll position on unmount (e.g., when minimizing)
+  useEffect(() => {
+    return () => {
+      if (mainRef.current) {
+        onScrollTopChange(mainRef.current.scrollTop || 0);
+      }
+    };
+  }, []);
   // Dynamically import per-post blocks for file-backed posts (no inline content)
   useEffect(() => {
     let cancelled = false;
@@ -819,9 +871,10 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
       try {
         if (selected.id === 'in-defense-of-bubbles') {
           const mod = await import('@/lib/posts/in-defense-of-bubbles');
-          if (!cancelled) {
-            setDynamicBlocks({ ...selected, content: mod.content });
-          }
+          if (!cancelled) setDynamicBlocks({ ...selected, content: mod.content });
+        } else if (selected.id === 'build-things-that-matter') {
+          const mod = await import('@/lib/posts/build-things-that-matter');
+          if (!cancelled) setDynamicBlocks({ ...selected, content: mod.content });
         }
       } catch {
         if (!cancelled) setBlocksError('Failed to load article');
@@ -833,6 +886,20 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
       cancelled = true;
     };
   }, [selected]);
+
+  // After content becomes available (e.g., dynamic blocks loaded) or selection changes,
+  // restore scroll position once the DOM has painted to ensure the container height is correct.
+  useEffect(() => {
+    if (!mainRef.current) return;
+    const desired = scrollTop || 0;
+    if (desired <= 0) return;
+    const id = requestAnimationFrame(() => {
+      if (mainRef.current) {
+        mainRef.current.scrollTop = desired;
+      }
+    });
+    return () => cancelAnimationFrame(id);
+  }, [selectedId, dynamicBlocks]);
   return (
     <div className="h-full flex">
       <aside className="w-64 border-r border-[var(--macos-border)] p-4 space-y-3 overflow-auto">
