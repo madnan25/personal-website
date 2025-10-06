@@ -265,25 +265,32 @@ function ContactApp() {
 
   // Load and render Cloudflare Turnstile widget
   useEffect(() => {
-    if (typeof window !== 'undefined' && widgetContainerRef.current && !widgetIdRef.current) {
-      const script = document.createElement('script');
-      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-      script.async = true;
-      script.defer = true;
-      script.onload = () => {
-        if (window.turnstile && widgetContainerRef.current) {
-          widgetIdRef.current = window.turnstile.render(widgetContainerRef.current, {
-            sitekey: '0x4AAAAAAABkMYinukE8nz0Y',
-            theme: 'auto',
-            size: 'flexible',
-            callback: (token: string) => { setTurnstileToken(token); setVerificationMessage(null); },
-            'expired-callback': () => { setTurnstileToken(''); setVerificationMessage('Verification expired. Please try again.'); },
-            'error-callback': () => { setTurnstileToken(''); setVerificationMessage('Verification failed to load. Please retry.'); },
-          });
-        }
-      };
-      document.head.appendChild(script);
-    }
+    if (typeof window === 'undefined' || widgetIdRef.current) return;
+    const container = widgetContainerRef.current;
+    if (!container) return;
+    // Script is loaded globally in app/layout.tsx to avoid duplicate loads
+    const onReady = () => {
+      // Defer render until after animations/layout settle to avoid "Node cannot be found" from iframe
+      window.requestAnimationFrame(() => {
+        setTimeout(() => {
+          if (!container || widgetIdRef.current || !window.turnstile) return;
+          try {
+            widgetIdRef.current = window.turnstile.render(container, {
+              sitekey: '0x4AAAAAAABkMYinukE8nz0Y',
+              theme: 'auto',
+              size: 'flexible',
+              callback: (token: string) => { setTurnstileToken(token); setVerificationMessage(null); },
+              'expired-callback': () => { setTurnstileToken(''); setVerificationMessage('Verification expired. Please try again.'); },
+              'error-callback': () => { setTurnstileToken(''); setVerificationMessage('Verification failed to load. Please retry.'); },
+            });
+          } catch {
+            setVerificationMessage('Verification failed to initialize. Please close and reopen Contact.');
+          }
+        }, 300);
+      });
+    };
+    if (window.turnstile) onReady();
+    else if (typeof window !== 'undefined') window.addEventListener('load', onReady, { once: true });
     return () => {
       if (widgetIdRef.current && window.turnstile) {
         window.turnstile.remove(widgetIdRef.current);
@@ -315,7 +322,7 @@ function ContactApp() {
         }
         setTurnstileToken('');
       }
-    } catch (error) {
+    } catch {
       setResult({ ok: false, message: 'Network error. Please try again.' });
     } finally {
       setIsSubmitting(false);

@@ -942,12 +942,13 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
   }, []);
   // Persist latest scroll position on unmount (e.g., when minimizing)
   useEffect(() => {
+    const refAtMount = mainRef.current;
     return () => {
-      if (mainRef.current) {
-        onScrollTopChange(mainRef.current.scrollTop || 0);
+      if (refAtMount) {
+        onScrollTopChange(refAtMount.scrollTop || 0);
       }
     };
-  }, []);
+  }, [onScrollTopChange]);
   // Dynamically import per-post blocks for file-backed posts (no inline content)
   useEffect(() => {
     let cancelled = false;
@@ -987,7 +988,7 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
       }
     });
     return () => cancelAnimationFrame(id);
-  }, [selectedId, dynamicBlocks]);
+  }, [selectedId, dynamicBlocks, scrollTop]);
   return (
     <div className="h-full flex">
       <aside className="w-64 border-r border-[var(--macos-border)] p-4 space-y-3 overflow-auto">
