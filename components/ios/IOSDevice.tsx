@@ -259,6 +259,7 @@ function ContactApp() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string>('');
+  const [verificationMessage, setVerificationMessage] = useState<string | null>(null);
   const widgetContainerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | undefined>(undefined);
 
@@ -273,9 +274,11 @@ function ContactApp() {
         if (window.turnstile && widgetContainerRef.current) {
           widgetIdRef.current = window.turnstile.render(widgetContainerRef.current, {
             sitekey: '0x4AAAAAAABkMYinukE8nz0Y',
-            callback: (token: string) => setTurnstileToken(token),
-            'expired-callback': () => setTurnstileToken(''),
-            'error-callback': () => setTurnstileToken(''),
+            theme: 'auto',
+            size: 'flexible',
+            callback: (token: string) => { setTurnstileToken(token); setVerificationMessage(null); },
+            'expired-callback': () => { setTurnstileToken(''); setVerificationMessage('Verification expired. Please try again.'); },
+            'error-callback': () => { setTurnstileToken(''); setVerificationMessage('Verification failed to load. Please retry.'); },
           });
         }
       };
@@ -406,7 +409,12 @@ function ContactApp() {
           </div>
 
           <div className="space-y-4">
-            <div ref={widgetContainerRef} className="flex justify-center" />
+            <div ref={widgetContainerRef} className="flex justify-center items-center min-h-[70px]" />
+            {!turnstileToken && (
+              <div className="text-xs text-[var(--macos-text-secondary)] px-3 py-2 rounded-md bg-[var(--macos-surface)] border border-[var(--macos-border)]">
+                {verificationMessage || 'Complete the verification above to enable Send.'}
+              </div>
+            )}
             <button 
               type="submit" 
               disabled={isSubmitting || !turnstileToken} 
