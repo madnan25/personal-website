@@ -37,9 +37,11 @@ function validateEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-async function verifyTurnstile(token: string, ip: string | null): Promise<boolean> {
+type TurnstileVerify = { success: boolean; errorCodes?: string[] };
+
+async function verifyTurnstile(token: string, ip: string | null): Promise<TurnstileVerify> {
   const secret = process.env.TURNSTILE_SECRET;
-  if (!secret) return false;
+  if (!secret) return { success: false, errorCodes: ['missing-secret'] };
   try {
     const form = new URLSearchParams();
     form.set('secret', secret);
@@ -50,11 +52,11 @@ async function verifyTurnstile(token: string, ip: string | null): Promise<boolea
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: form,
     });
-    if (!res.ok) return false;
+    if (!res.ok) return { success: false, errorCodes: ['http-'+String(res.status)] };
     const data = await res.json().catch(() => ({}));
-    return Boolean(data.success);
+    return { success: Boolean(data.success), errorCodes: data['error-codes'] };
   } catch {
-    return false;
+    return { success: false, errorCodes: ['network-error'] };
   }
 }
 
@@ -106,9 +108,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Verification required.' }, { status: 400 });
     }
 
-    const turnstileOk = await verifyTurnstile(turnstileToken, ip);
-    if (!turnstileOk) {
-      return NextResponse.json({ error: 'Verification failed.' }, { status: 400 });
+    const turnstileRes = await verifyTurnstile(turnstileToken, ip);
+    if (!turnstileRes.success) {
+      const code = Array.isArray(turnstileRes.errorCodes) && turnstileRes.errorCodes.length > 0 ? ` (${turnstileRes.errorCodes.join(', ')})` : '';
+      return NextResponse.json({ error: `Verification failed${code}.` }, { status: 400 });
     }
 
     const apiKey = process.env.RESEND_API_KEY;
