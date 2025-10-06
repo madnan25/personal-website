@@ -32,7 +32,7 @@ type WallpaperOption = 'video' | 'mobile1' | 'inouske' | 'luffyPhone' | 'luffyKa
 
 export default function IOSDevice() {
   const [controlCenterOpen, setControlCenterOpen] = useState(false);
-  const [wallpaper, setWallpaper] = useState<WallpaperOption>('video');
+  const [wallpaper, setWallpaper] = useState<WallpaperOption>('luffyPhone');
 
   // Load/persist wallpaper preference
   useEffect(() => {
@@ -150,7 +150,7 @@ export default function IOSDevice() {
                 case 'luffyKaido':
                   return '/luffy-kaido.jpeg';
                 default:
-                  return '/mobile-wallpaper1.jpeg';
+                  return '/luffy-phone.jpg';
               }
             })()})` }}
           />
