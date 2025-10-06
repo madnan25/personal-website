@@ -930,6 +930,7 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
   const router = useRouter();
   const selected = blogPosts.find((p) => p.id === selectedId) ?? null;
   const mainRef = useRef<HTMLDivElement>(null);
+  const isRestoringRef = useRef<boolean>(false);
   const [dynamicBlocks, setDynamicBlocks] = useState<typeof selected | null>(null);
   const [isLoadingBlocks, setIsLoadingBlocks] = useState(false);
   const [blocksError, setBlocksError] = useState<string | null>(null);
@@ -982,12 +983,18 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
     if (!mainRef.current) return;
     const desired = scrollTop || 0;
     if (desired <= 0) return;
+    isRestoringRef.current = true;
     const id = requestAnimationFrame(() => {
       if (mainRef.current) {
         mainRef.current.scrollTop = desired;
       }
+      // allow scroll event to fire, then clear the restoring flag
+      setTimeout(() => { isRestoringRef.current = false; }, 0);
     });
-    return () => cancelAnimationFrame(id);
+    return () => {
+      cancelAnimationFrame(id);
+      isRestoringRef.current = false;
+    };
   }, [selectedId, dynamicBlocks, scrollTop]);
   return (
     <div className="h-full flex">
@@ -1019,7 +1026,15 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
           );
         })}
       </aside>
-      <main ref={mainRef} className="flex-1 p-6 overflow-auto" onScroll={(e) => onScrollTopChange((e.target as HTMLDivElement).scrollTop)}>
+      <main
+        ref={mainRef}
+        className="flex-1 p-6 overflow-auto"
+        onScroll={(e) => {
+          if (isRestoringRef.current) return;
+          const val = (e.target as HTMLDivElement).scrollTop;
+          onScrollTopChange(val);
+        }}
+      >
         {!selected ? (
           <div className="h-full flex items-center justify-center">
             <div className="text-center text-[var(--macos-text-secondary)]">
