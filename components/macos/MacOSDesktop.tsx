@@ -7,8 +7,7 @@ import DesktopWallpaper, { GradientBackground } from "./DesktopWallpaper";
 import MenuBar from "./MenuBar";
 import Dock from "./Dock";
 import Window from "./Window";
-import { motion } from "framer-motion";
-import { User as UserIcon } from "lucide-react";
+import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
 import BlogTemplate from "@/components/blog/BlogTemplate";
 import { blogPosts } from "@/lib/blog";
 import { DockProvider, useDockContext } from "./DockContext";
@@ -571,6 +570,44 @@ function DesktopContextMenu({ onGetInfo, onChangeWallpaper, onOpenTerminal }: { 
 // About Window Content Component
 function AboutWindow({ initialScrollTop = 0, onScrollTopChange, onOpenWindow }: { initialScrollTop?: number; onScrollTopChange?: (t: number) => void; onOpenWindow?: (id: string) => void; }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const posterRef = useRef<HTMLDivElement>(null);
+  const prefersReducedMotion = useReducedMotion();
+  const tiltX = useMotionValue(0);
+  const tiltY = useMotionValue(0);
+  const scaleMv = useMotionValue(1);
+  const glareX = useMotionValue(0);
+  const glareY = useMotionValue(0);
+  const rotateX = useSpring(tiltX, { stiffness: 250, damping: 20 });
+  const rotateY = useSpring(tiltY, { stiffness: 250, damping: 20 });
+  const scale = useSpring(scaleMv, { stiffness: 250, damping: 20 });
+  const hx = useSpring(glareX, { stiffness: 250, damping: 20 });
+  const hy = useSpring(glareY, { stiffness: 250, damping: 20 });
+  const opacity = useTransform(scale, s => s > 1 ? 0.25 : 0);
+  const shadow = useTransform(scale, s => s > 1 ? "0 35px 80px rgba(0,0,0,0.45)" : "0 12px 24px rgba(0,0,0,0.25)");
+  const handlePosterMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    // Guard: Only animate on hover-capable pointers and if user doesn't prefer reduced motion
+    if (prefersReducedMotion || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    const rect = posterRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const px = (x / rect.width) * 2 - 1;
+    const py = (y / rect.height) * 2 - 1;
+    const intensity = Math.min(1, Math.hypot(px, py));
+    const max = 16;
+    tiltY.set(px * max);
+    tiltX.set(-py * max);
+    scaleMv.set(Math.min(1.08, 1.05 + 0.03 * intensity));
+    glareX.set(px * 12);
+    glareY.set(py * 12);
+  }, [glareX, glareY, prefersReducedMotion, scaleMv, tiltX, tiltY]);
+  const handlePosterLeave = useCallback(() => {
+    tiltX.set(0);
+    tiltY.set(0);
+    scaleMv.set(1);
+    glareX.set(0);
+    glareY.set(0);
+  }, [glareX, glareY, scaleMv, tiltX, tiltY]);
   useLayoutEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = initialScrollTop;
@@ -582,9 +619,30 @@ function AboutWindow({ initialScrollTop = 0, onScrollTopChange, onOpenWindow }: 
       <motion.div className="max-w-4xl">
         {/* Header */}
         <div className="mb-8">
-          <motion.div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 mb-6 flex items-center justify-center">
-            <UserIcon className="w-12 h-12 text-white" />
-          </motion.div>
+          <div className="mb-6 [perspective:800px]">
+            <motion.div
+              ref={posterRef}
+              className="inline-block"
+              onMouseMove={handlePosterMove}
+              onMouseLeave={handlePosterLeave}
+              style={prefersReducedMotion ? { transformStyle: "preserve-3d", rotateX: 0, rotateY: 0, scale: 1, boxShadow: "0 12px 24px rgba(0,0,0,0.25)" } : { transformStyle: "preserve-3d", rotateX, rotateY, scale, boxShadow: shadow }}
+            >
+              <div className="relative">
+                <Image
+                  src="/Wanted-Poster.png"
+                  alt="Wanted poster of Mohammad Dayem Adnan"
+                  width={320}
+                  height={400}
+                  priority
+                  className="w-40 h-auto rounded-lg shadow-lg will-change-transform"
+                />
+                <motion.div
+                  className="pointer-events-none absolute inset-0 rounded-lg"
+                  style={prefersReducedMotion ? { background: "linear-gradient(120deg, rgba(255,255,255,0.28), rgba(255,255,255,0) 40%)", opacity: 0 } : { background: "linear-gradient(120deg, rgba(255,255,255,0.28), rgba(255,255,255,0) 40%)", opacity, x: hx, y: hy }}
+                />
+              </div>
+            </motion.div>
+          </div>
           
           <motion.h1 className="text-4xl font-light text-[var(--macos-text-primary)] mb-3 shine-text">
             Mohammad Dayem Adnan
