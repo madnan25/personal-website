@@ -276,7 +276,7 @@ function ContactApp() {
           if (!container || widgetIdRef.current || !window.turnstile) return;
           try {
             widgetIdRef.current = window.turnstile.render(container, {
-              sitekey: '0x4AAAAAAABkMYinukE8nz0Y',
+              sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '0x4AAAAAAABkMYinukE8nz0Y',
               theme: 'auto',
               size: 'flexible',
               callback: (token: string) => { setTurnstileToken(token); setVerificationMessage(null); },
