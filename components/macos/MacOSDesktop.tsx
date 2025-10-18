@@ -382,6 +382,14 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
           onMove={(pos) => updateShortcut("nettaworks", pos)}
           onOpen={() => window.open("https://nettaworks.com", "_blank", "noopener,noreferrer")}
         />
+        <DesktopShortcut
+          icon={<Image src="/discord.png" alt="Discord" width={48} height={48} draggable={false} />}
+          label="Discord"
+          left={shortcutPositions["discord"]?.left ?? 24}
+          top={shortcutPositions["discord"]?.top ?? 470}
+          onMove={(pos) => updateShortcut("discord", pos)}
+          onOpen={() => window.open("https://discord.com/invite/dnrfSMgCvV", "_blank", "noopener,noreferrer")}
+        />
       </div>
       
       {/* Menu Bar */}
