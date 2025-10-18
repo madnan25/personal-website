@@ -32,6 +32,18 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
   const router = useRouter();
   const pathname = usePathname();
   const [wallpaperSrc, setWallpaperSrc] = useState<string>("/luffy-neon.jpg");
+  // Load/persist wallpaper preference for desktop
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('macos_wallpaper');
+      if (saved) setWallpaperSrc(saved);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      if (wallpaperSrc) window.localStorage.setItem('macos_wallpaper', wallpaperSrc);
+    } catch {}
+  }, [wallpaperSrc]);
   const [isAnyMaximized, setIsAnyMaximized] = useState<boolean>(false);
   const [isTopHover, setIsTopHover] = useState<boolean>(false);
   const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
