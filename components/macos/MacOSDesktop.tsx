@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, memo } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import DesktopWallpaper, { GradientBackground } from "./DesktopWallpaper";
@@ -26,6 +26,8 @@ interface WindowState {
   position: { x: number; y: number };
 }
 
+const MemoBlogWindow = memo(BlogWindow);
+
 function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initialSelectedBlogId?: string; initialOpenWindow?: 'blog' | 'about' | 'portfolio' | 'projects' | 'contact' | 'settings' | 'terminal' | 'media' | 'trash' }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -46,9 +48,9 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
   }, []);
 
   // Window memory: persists while window is minimized, resets on close
-  const [blogMemory, setBlogMemory] = useState<{ selectedId: string | null; scrollTop: number }>({
+  const [blogMemory, setBlogMemory] = useState<{ selectedId: string | null; scrollTopById: Record<string, number> }>({
     selectedId: initialSelectedBlogId ?? null,
-    scrollTop: 0,
+    scrollTopById: {},
   });
   const [scrollMemory, setScrollMemory] = useState<Record<string, number>>({});
   const [terminalMemory, setTerminalMemory] = useState<{ history: string[]; input: string }>({
@@ -159,6 +161,12 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
     openWindowById(itemId);
   };
 
+  // Stable callbacks for Blog window to avoid re-render loops
+  const handleBlogSelectedIdChange = useCallback((id: string | null) => {
+    setBlogMemory(prev => ({ ...prev, selectedId: id }));
+  }, []);
+  // No scroll position tracking for blogs to keep scrolling buttery-smooth
+
   const openWindowById = (windowId: string) => {
     setWindows(prev => {
       const target = prev.find(w => w.id === windowId);
@@ -229,7 +237,7 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
     setIsTopHover(false);
     // Clear memory only on hard close
     if (windowId === 'blog') {
-      setBlogMemory({ selectedId: null, scrollTop: 0 });
+      setBlogMemory({ selectedId: null, scrollTopById: {} });
       // When blog window is closed, navigate to root if currently under /blog
       if (typeof pathname === 'string' && pathname.startsWith('/blog')) {
         router.push('/', { scroll: false });
@@ -295,6 +303,7 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
       return false;
     };
     if (ownsUrl(windowId)) {
+      // No-op for blog now that we don't persist scroll position
       const blogOpen = windowsRef.current.find(w => w.id === 'blog' && w.isOpen && !w.isMinimized);
       const aboutOpen = windowsRef.current.find(w => w.id === 'about' && w.isOpen && !w.isMinimized);
       if (windowId === 'blog') {
@@ -439,11 +448,11 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
             }}
           >
             {window.id === 'blog' ? (
-              <BlogWindow 
+              <MemoBlogWindow 
                 selectedId={blogMemory.selectedId}
-                onSelectedIdChange={(id) => setBlogMemory(prev => ({ ...prev, selectedId: id }))}
-                scrollTop={blogMemory.scrollTop}
-                onScrollTopChange={(t) => setBlogMemory(prev => ({ ...prev, scrollTop: t }))}
+                onSelectedIdChange={handleBlogSelectedIdChange}
+                scrollTop={0}
+                onScrollTopChange={() => { /* no-op to avoid state churn during scroll */ }}
               />
             ) : window.id === 'about' ? (
               <AboutWindow 
@@ -989,6 +998,10 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
   const selected = blogPosts.find((p) => p.id === selectedId) ?? null;
   const mainRef = useRef<HTMLDivElement>(null);
   const isRestoringRef = useRef<boolean>(false);
+  const onScrollTopChangeRef = useRef(onScrollTopChange);
+  useEffect(() => { onScrollTopChangeRef.current = onScrollTopChange; }, [onScrollTopChange]);
+  const userScrolledRef = useRef<boolean>(false);
+  // Removed scroll persistence; keep minimal refs only
   const [dynamicBlocks, setDynamicBlocks] = useState<typeof selected | null>(null);
   const [isLoadingBlocks, setIsLoadingBlocks] = useState(false);
   const [blocksError, setBlocksError] = useState<string | null>(null);
@@ -1004,10 +1017,10 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
     const refAtMount = mainRef.current;
     return () => {
       if (refAtMount) {
-        onScrollTopChange(refAtMount.scrollTop || 0);
+        onScrollTopChangeRef.current(refAtMount.scrollTop || 0);
       }
     };
-  }, [onScrollTopChange]);
+  }, []);
   // Dynamically import per-post blocks for file-backed posts (no inline content)
   useEffect(() => {
     let cancelled = false;
@@ -1035,25 +1048,45 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
     };
   }, [selected]);
 
-  // After content becomes available (e.g., dynamic blocks loaded) or selection changes,
-  // restore scroll position once the DOM has painted to ensure the container height is correct.
+  // Always start at top for a fresh, smooth experience
+  useLayoutEffect(() => {
+    if (!mainRef.current) return;
+    mainRef.current.scrollTop = 0;
+  }, [selectedId, dynamicBlocks]);
+  // Extra guard: if DOM height changes right after mount, re-apply once
   useEffect(() => {
     if (!mainRef.current) return;
-    const desired = scrollTop || 0;
-    if (desired <= 0) return;
-    isRestoringRef.current = true;
-    const id = requestAnimationFrame(() => {
-      if (mainRef.current) {
-        mainRef.current.scrollTop = desired;
+    if (scrollTop > 0 && Math.abs(mainRef.current.scrollTop - scrollTop) > 2) {
+      const id = requestAnimationFrame(() => {
+        if (mainRef.current) mainRef.current.scrollTop = scrollTop;
+      });
+      return () => cancelAnimationFrame(id);
+    }
+  }, [scrollTop]);
+  // Passive scroll listener with rAF batching to avoid frequent state updates
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    let ticking = false;
+    const handle = () => {
+      if (isRestoringRef.current) return;
+      if (!userScrolledRef.current) userScrolledRef.current = true;
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(() => {
+          // no-op: we don't propagate scroll during scroll to keep it smooth
+          ticking = false;
+        });
       }
-      // allow scroll event to fire, then clear the restoring flag
-      setTimeout(() => { isRestoringRef.current = false; }, 0);
-    });
-    return () => {
-      cancelAnimationFrame(id);
-      isRestoringRef.current = false;
     };
-  }, [selectedId, dynamicBlocks, scrollTop]);
+    el.addEventListener('scroll', handle, { passive: true });
+    // Keep layer simple to reduce text shimmer
+    el.style.contain = 'paint';
+    return () => {
+      el.removeEventListener('scroll', handle as EventListener);
+      el.style.contain = '';
+    };
+  }, []);
   return (
     <div className="h-full flex">
       <aside className="w-64 border-r border-[var(--macos-border)] p-4 space-y-3 overflow-auto">
@@ -1087,11 +1120,6 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
       <main
         ref={mainRef}
         className="flex-1 p-6 overflow-auto"
-        onScroll={(e) => {
-          if (isRestoringRef.current) return;
-          const val = (e.target as HTMLDivElement).scrollTop;
-          onScrollTopChange(val);
-        }}
       >
         {!selected ? (
           <div className="h-full flex items-center justify-center">
