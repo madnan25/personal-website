@@ -248,3 +248,35 @@ h2, h3 {
   background-color: color-mix(in srgb, var(--macos-accent) 10%, transparent);
   border-color: color-mix(in srgb, var(--macos-accent) 30%, transparent) !important;
 }
+
+/* macOS boot-style determinate progress bar */
+.macos-progress {
+  position: relative;
+  overflow: hidden;
+  border-radius: 9999px;
+  background-color: #374151; /* Tailwind gray-700 */
+}
+.macos-progress__bar {
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background-color: #e5e7eb; /* Tailwind gray-200 */
+  transition: width 0.3s ease;
+}
+/* CSS-only auto fill animation for SSR-safe loader (0% -> ~95%) */
+.macos-progress__bar--auto {
+  animation: macos-progress-auto-fill 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes macos-progress-auto-fill {
+  0% { width: 0%; }
+  100% { width: 95%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .macos-progress__bar {
+    transition: none;
+  }
+  .macos-progress__bar--auto {
+    animation: none;
+    width: 95%;
+  }
+}
