@@ -36,7 +36,14 @@ export async function POST(request: Request) {
       throw new HttpError(502, 'Failed to send email.');
     }
 
-    return NextResponse.json({ ok: true });
+    // Success with temporary backend indicator header for diagnostics
+    const res = NextResponse.json({ ok: true });
+    // Note: this only indicates env presence, not runtime success. Remove after verification.
+    res.headers.set(
+      'X-RateLimit-Backend',
+      process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN ? 'upstash' : 'memory'
+    );
+    return res;
   } catch (e) {
     if (e instanceof HttpError) {
       return jsonError(e.status, e.message, e.headers);
