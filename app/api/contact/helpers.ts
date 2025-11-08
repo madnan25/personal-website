@@ -123,7 +123,11 @@ export async function requireTurnstileOrThrow(
 export function getResendOrThrow() {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) throw new HttpError(500, 'Email service not configured.');
-  return new Resend(apiKey);
+  try {
+    return new Resend(apiKey);
+  } catch {
+    throw new HttpError(500, 'Email service not configured.');
+  }
 }
 
 export function buildEmailPayload(
