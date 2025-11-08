@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     }
     // Log unexpected errors for debugging while returning a safe message
     console.error('[contact] unexpected error', e);
-    return jsonError(400, 'Invalid request.');
+    return jsonError(500, 'Unexpected server error.');
   }
 }
 

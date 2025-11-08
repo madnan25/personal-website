@@ -116,8 +116,12 @@ export async function requireTurnstileOrThrow(
 ) {
   const res = await verifier(token, ip);
   if (res.success) return;
-  const code = Array.isArray(res.errorCodes) && res.errorCodes.length > 0 ? ` (${res.errorCodes.join(', ')})` : '';
-  throw new HttpError(400, `Verification failed${code}.`);
+  const codes = Array.isArray(res.errorCodes) ? res.errorCodes : [];
+  if (codes.includes('missing-secret')) {
+    throw new HttpError(500, 'Verification service not configured.');
+  }
+  const suffix = codes.length > 0 ? ` (${codes.join(', ')})` : '';
+  throw new HttpError(400, `Verification failed${suffix}.`);
 }
 
 export function getResendOrThrow() {
