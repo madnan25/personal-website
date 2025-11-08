@@ -88,12 +88,16 @@ export function normalizeAndValidateBody(body: Partial<ContactPayload> & { turns
 
 export async function enforceRateLimit(key: string) {
   if (ratelimiter) {
-    const { success, reset } = await ratelimiter.limit(`contact:${key}`);
-    if (!success) {
-      const retryAfter = reset ? Math.max(0, Math.ceil((reset - Date.now()) / 1000)) : 60;
-      throw new HttpError(429, 'Rate limit exceeded. Please try again later.', { 'Retry-After': String(retryAfter) });
+    try {
+      const { success, reset } = await ratelimiter.limit(`contact:${key}`);
+      if (!success) {
+        const retryAfter = reset ? Math.max(0, Math.ceil((reset - Date.now()) / 1000)) : 60;
+        throw new HttpError(429, 'Rate limit exceeded. Please try again later.', { 'Retry-After': String(retryAfter) });
+      }
+      return;
+    } catch {
+      // If Upstash is misconfigured or unavailable, degrade gracefully to in-memory limiter
     }
-    return;
   }
   const now = Date.now();
   const current = rateLimitMap.get(key);
