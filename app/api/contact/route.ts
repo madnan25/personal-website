@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     try {
       const { error } = await resend.emails.send(payload);
       if (error) throw new HttpError(502, 'Failed to send email.');
-    } catch (err) {
+    } catch {
       // Normalize unknown send errors into a 502 for the client
       throw new HttpError(502, 'Failed to send email.');
     }

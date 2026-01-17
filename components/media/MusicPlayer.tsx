@@ -139,6 +139,8 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
   const [duration, setDuration] = useState(0);
   const [durationsByUrl, setDurationsByUrl] = useState<Record<string, number>>({});
   const [coverByUrl, setCoverByUrl] = useState<Record<string, string>>({});
+  const coverByUrlRef = useRef<Record<string, string>>({});
+  const coverObjectUrlsRef = useRef<Set<string>>(new Set());
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const fetchSongs = useCallback(async () => {
@@ -317,6 +319,47 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
     return formatTime(d);
   };
 
+  // Keep a ref for fast "already fetched" checks without re-triggering effects
+  useEffect(() => {
+    coverByUrlRef.current = coverByUrl;
+  }, [coverByUrl]);
+
+  // Fetch embedded cover art for the currently selected track (macOS only)
+  useEffect(() => {
+    if (variant !== "macos") return;
+    const url = currentTrack?.url;
+    if (!url) return;
+    if (coverByUrlRef.current[url] !== undefined) return;
+
+    let cancelled = false;
+    (async () => {
+      const cover = await extractEmbeddedCoverFromID3(url);
+      if (cancelled) {
+        if (cover) URL.revokeObjectURL(cover);
+        return;
+      }
+      if (cover) coverObjectUrlsRef.current.add(cover);
+      setCoverByUrl((prev) => ({ ...prev, [url]: cover ?? "" }));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [variant, currentTrack?.url]);
+
+  // Cleanup blob URLs on unmount
+  useEffect(() => {
+    const urls = coverObjectUrlsRef.current;
+    return () => {
+      urls.forEach((u) => {
+        try {
+          URL.revokeObjectURL(u);
+        } catch {}
+      });
+      urls.clear();
+    };
+  }, []);
+
   if (variant === "ios") {
     return (
       <div
@@ -489,36 +532,6 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
       </div>
     );
   }
-
-  // macOS: fetch embedded cover art for the currently selected track, if available.
-  useEffect(() => {
-    if (!currentTrack?.url) return;
-    const url = currentTrack.url;
-    if (coverByUrl[url] !== undefined) return;
-
-    let cancelled = false;
-    (async () => {
-      const cover = await extractEmbeddedCoverFromID3(url);
-      if (cancelled) {
-        if (cover) URL.revokeObjectURL(cover);
-        return;
-      }
-      setCoverByUrl((prev) => ({ ...prev, [url]: cover ?? "" }));
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [coverByUrl, currentTrack?.url]);
-
-  // Revoke created object URLs on unmount
-  useEffect(() => {
-    return () => {
-      for (const v of Object.values(coverByUrl)) {
-        if (v) URL.revokeObjectURL(v);
-      }
-    };
-  }, [coverByUrl]);
 
   // macOS layout inspired by provided screenshot
   return (
