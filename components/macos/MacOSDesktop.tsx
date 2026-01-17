@@ -14,6 +14,7 @@ import { DockProvider, useDockContext } from "./DockContext";
 // import { cn } from "@/lib/utils";
 import { TerminalSquare, FileVideo, Calendar, Linkedin } from "lucide-react";
 import MediaPlayer from "./MediaPlayer";
+import MusicPlayer from "@/components/media/MusicPlayer";
 import DesktopShortcut from "./DesktopShortcut";
 import VerticalIcon from "./icons/Vertical";
 
@@ -28,7 +29,7 @@ interface WindowState {
 
 const MemoBlogWindow = memo(BlogWindow);
 
-function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initialSelectedBlogId?: string; initialOpenWindow?: 'blog' | 'about' | 'portfolio' | 'projects' | 'contact' | 'settings' | 'terminal' | 'media' | 'trash' }) {
+function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initialSelectedBlogId?: string; initialOpenWindow?: 'blog' | 'about' | 'portfolio' | 'projects' | 'contact' | 'settings' | 'terminal' | 'media' | 'music' | 'trash' }) {
   const router = useRouter();
   const pathname = usePathname();
   const [wallpaperSrc, setWallpaperSrc] = useState<string>("/luffy-neon.jpg");
@@ -160,6 +161,14 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
       isMinimized: false,
       position: { x: 180, y: 140 },
       component: <MediaPlayer videoId="dQw4w9WgXcQ" />
+    },
+    {
+      id: 'music',
+      title: 'Music',
+      isOpen: false,
+      isMinimized: false,
+      position: { x: 220, y: 140 },
+      component: <MusicPlayer variant="macos" />
     }
   ]);
 
@@ -199,13 +208,13 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
 
   const runCommand = (cmd: string) => {
     const trimmed = cmd.trim();
-    const openMatch = /^open\s+(about|portfolio|projects|blog|contact|settings)$/i.exec(trimmed);
+    const openMatch = /^open\s+(about|portfolio|projects|blog|contact|settings|music)$/i.exec(trimmed);
     if (openMatch) {
       const target = openMatch[1].toLowerCase();
       openWindowById(target);
       return `Opening ${target}...`;
     }
-    const closeMatch = /^(?:exit|close)\s+(about|portfolio|projects|blog|contact|settings|terminal)$/i.exec(trimmed);
+    const closeMatch = /^(?:exit|close)\s+(about|portfolio|projects|blog|contact|settings|terminal|music)$/i.exec(trimmed);
     if (closeMatch) {
       const target = closeMatch[1].toLowerCase();
       if (target === 'terminal') {
@@ -226,7 +235,7 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
       return "__EXIT__";
     }
     if (/^help$/i.test(trimmed)) {
-      return "Commands: help, clear, open <about|portfolio|projects|blog|contact|settings>, close <window>, exit <window>";
+      return "Commands: help, clear, open <about|portfolio|projects|blog|contact|settings|music>, close <window>, exit <window>";
     }
     if (/^clear$/i.test(trimmed)) {
       return "__CLEAR__";
@@ -426,10 +435,19 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
       {/* Windows */}
       {windows.map(window => 
         window.isOpen && !window.isMinimized && (
+          (() => {
+            const sizing =
+              window.id === 'music'
+                ? { width: 1040, height: 680, minWidth: 860, minHeight: 560 }
+                : window.id === 'media'
+                  ? { width: 980, height: 660, minWidth: 720, minHeight: 520 }
+                  : {};
+            return (
           <Window
             key={window.id}
             title={window.title}
             initialPosition={window.position}
+            {...sizing}
             onClose={() => handleWindowClose(window.id)}
             onMinimize={() => handleWindowMinimize(window.id)}
             onMaximize={(isMax) => {
@@ -517,6 +535,8 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
               window.component
             )}
           </Window>
+            );
+          })()
         )
       )}
       
@@ -537,7 +557,7 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
   );
 }
 
-export default function MacOSDesktop({ initialSelectedBlogId, initialOpenWindow }: { initialSelectedBlogId?: string; initialOpenWindow?: 'blog' | 'about' | 'portfolio' | 'projects' | 'contact' | 'settings' | 'terminal' | 'media' | 'trash' }) {
+export default function MacOSDesktop({ initialSelectedBlogId, initialOpenWindow }: { initialSelectedBlogId?: string; initialOpenWindow?: 'blog' | 'about' | 'portfolio' | 'projects' | 'contact' | 'settings' | 'terminal' | 'media' | 'music' | 'trash' }) {
   return (
     <DockProvider>
       <MacOSDesktopInner initialSelectedBlogId={initialSelectedBlogId} initialOpenWindow={initialOpenWindow} />

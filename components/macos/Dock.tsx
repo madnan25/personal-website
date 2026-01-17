@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { useDockContext } from "./DockContext";
 import { cn } from "@/lib/utils";
-import { User, Rocket, FileText, Mail, Settings, Trash2, FileVideo, TerminalSquare } from "lucide-react";
+import { User, Rocket, FileText, Mail, Settings, Trash2, FileVideo, TerminalSquare, Music2 } from "lucide-react";
 
 interface DockItemProps {
   id: string;
@@ -73,6 +73,7 @@ export default function Dock({ className, onItemClick, minimizedIds = [], hidden
     { icon: <User className="w-6 h-6" />, label: "About", id: "about" },
     { icon: <Rocket className="w-6 h-6" />, label: "Projects", id: "projects" },
     { icon: <FileText className="w-6 h-6" />, label: "Blog", id: "blog" },
+    { icon: <Music2 className="w-6 h-6" />, label: "Music", id: "music" },
     { icon: <Mail className="w-6 h-6" />, label: "Contact", id: "contact" },
     { icon: <Settings className="w-6 h-6" />, label: "Settings", id: "settings" },
   ];

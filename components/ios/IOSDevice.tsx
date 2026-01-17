@@ -9,6 +9,7 @@ import ControlCenter from "./ControlCenter";
 import { blogPosts } from "@/lib/blog";
 import BlogTemplate from "@/components/blog/BlogTemplate";
 import { Calendar, Linkedin } from "lucide-react";
+import MusicPlayer from "@/components/media/MusicPlayer";
 
 // Declare Cloudflare Turnstile on the window to satisfy TypeScript during build
 declare global {
@@ -84,6 +85,12 @@ export default function IOSDevice() {
       title: 'Settings',
       isOpen: false,
       component: <SettingsApp wallpaper={wallpaper} onChange={setWallpaper} />
+    },
+    music: {
+      id: 'music',
+      title: 'Music',
+      isOpen: false,
+      component: <MusicApp />
     },
   });
 
@@ -168,7 +175,7 @@ export default function IOSDevice() {
 
       <StatusBar />
       {/* Prevent background scroll when any window is open by toggling pointer events */}
-      <div className={apps.about.isOpen || apps.blog.isOpen || apps.projects.isOpen || apps.contact.isOpen || apps.gallery.isOpen || apps.settings.isOpen ? 'pointer-events-none' : ''}>
+      <div className={Object.values(apps).some(app => app.isOpen) ? 'pointer-events-none' : ''}>
       <HomeScreen onAppOpen={handleAppOpen} />
       </div>
       
@@ -625,6 +632,10 @@ function GalleryApp() {
       </div>
     </div>
   );
+}
+
+function MusicApp() {
+  return <MusicPlayer variant="ios" />;
 }
 
 function SettingsApp({ wallpaper, onChange }: { wallpaper: WallpaperOption; onChange: (w: WallpaperOption) => void; }) {

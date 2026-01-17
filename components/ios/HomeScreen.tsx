@@ -8,7 +8,8 @@ import {
   IoPersonCircleOutline,
   IoRocketOutline,
   IoNewspaperOutline,
-  IoCallOutline
+  IoCallOutline,
+  IoMusicalNotesOutline
 } from "react-icons/io5";
 
 interface AppIconProps {
@@ -72,6 +73,7 @@ export default function HomeScreen({ onAppOpen, className }: HomeScreenProps) {
     { icon: <IoPersonCircleOutline className="w-7 h-7" />, label: "About", id: "about", gradient: "bg-gradient-to-br from-gray-600 to-gray-800" },
     { icon: <IoRocketOutline className="w-7 h-7" />, label: "Projects", id: "projects", gradient: "bg-gradient-to-br from-purple-500 to-purple-700" },
     { icon: <IoNewspaperOutline className="w-7 h-7" />, label: "Blog", id: "blog", gradient: "bg-gradient-to-br from-yellow-400 to-orange-500" },
+    { icon: <IoMusicalNotesOutline className="w-7 h-7" />, label: "Music", id: "music", gradient: "bg-gradient-to-br from-pink-500 to-rose-600" },
     { icon: <Image src="/settings.png" alt="Settings" width={48} height={48} className="w-11 h-11 sm:w-12 sm:h-12 object-contain" priority />, label: "Settings", id: "settings", gradient: "bg-gradient-to-br from-gray-500 to-gray-700" },
   ];
 
