@@ -140,6 +140,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
   const [duration, setDuration] = useState(0);
   const [durationsByUrl, setDurationsByUrl] = useState<Record<string, number>>({});
   const [coverByUrl, setCoverByUrl] = useState<Record<string, string>>({});
+  const [playError, setPlayError] = useState<string | null>(null);
   const coverByUrlRef = useRef<Record<string, string>>({});
   const coverObjectUrlsRef = useRef<Set<string>>(new Set());
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -229,6 +230,21 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
     }
   }, [currentTrack?.url]);
 
+  // iOS Safari sometimes needs canplaythrough before play() will actually start.
+  useEffect(() => {
+    if (variant !== "ios") return;
+    const audio = audioRef.current;
+    if (!audio) return;
+    const onCanPlay = () => {
+      if (!audio.paused && isPlaying) return;
+      // No-op; we use this hook mainly to ensure the event fires and metadata is ready.
+    };
+    audio.addEventListener("canplaythrough", onCanPlay);
+    return () => {
+      audio.removeEventListener("canplaythrough", onCanPlay);
+    };
+  }, [variant, isPlaying]);
+
   // Background-load durations for playlist items (metadata only)
   useEffect(() => {
     if (!tracks.length) {
@@ -304,6 +320,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
     }
 
     try {
+      setPlayError(null);
       const absolute = new URL(track.url, window.location.href).toString();
       if (audio.src !== absolute) {
         audio.src = track.url;
@@ -313,8 +330,10 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
       audio.load();
       await audio.play();
       setIsPlaying(true);
-    } catch {
+    } catch (e) {
       setIsPlaying(false);
+      const err = e as { name?: string; message?: string };
+      setPlayError(err?.name ? `${err.name}${err.message ? `: ${err.message}` : ""}` : "Failed to play audio");
     }
   };
 
@@ -327,16 +346,30 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
     if (!audio) return;
     if (audio.paused) {
       try {
+        setPlayError(null);
+        // Always load before play on iOS; it helps avoid 0:00 and NotAllowed edge cases.
+        if (currentTrack?.url) {
+          const absolute = new URL(currentTrack.url, window.location.href).toString();
+          if (audio.src !== absolute) {
+            audio.src = currentTrack.url;
+            audio.currentTime = 0;
+            setCurrentTime(0);
+            setDuration(0);
+          }
+        }
         // If src isn't ready yet (can happen on iOS), set it and load before play.
         if (!audio.getAttribute("src") && currentTrack?.url) {
           audio.src = currentTrack.url;
           audio.currentTime = 0;
-          audio.load();
         }
+        audio.load();
         // Calling play() from a user gesture is critical on iOS Safari.
         await audio.play();
         setIsPlaying(true);
-      } catch {}
+      } catch (e) {
+        const err = e as { name?: string; message?: string };
+        setPlayError(err?.name ? `${err.name}${err.message ? `: ${err.message}` : ""}` : "Failed to play audio");
+      }
     } else {
       audio.pause();
       setIsPlaying(false);
@@ -531,6 +564,11 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
 
           {/* Fixed bottom controls */}
           <div className="border-t border-white/10 bg-black/10 backdrop-blur-xl rounded-2xl px-4 py-4">
+            {playError && (
+              <div className="mb-3 text-xs text-red-300 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
+                Playback error: {playError}. If you’re on iOS, try tapping Play again (Safari requires a direct user gesture).
+              </div>
+            )}
             <div className="flex items-center justify-center gap-4 mb-4">
               <button
                 onClick={playPrev}
@@ -815,7 +853,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
 
       <audio
         ref={audioRef}
-        className="hidden"
+        className="sr-only"
         src={currentTrack?.url}
         playsInline
         preload="metadata"
