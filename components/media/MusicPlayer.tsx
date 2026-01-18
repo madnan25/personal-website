@@ -403,7 +403,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
               <div>
                 <div className="text-lg font-semibold">{currentTrack ? currentTrack.title : "Pick a track"}</div>
                 <div className="text-xs text-[var(--macos-text-secondary)]">
-                  {currentTrack ? currentTrack.name : "Upload mp3 files to /public/songs"}
+                  {currentTrack ? " " : "Upload mp3 files to /public/songs"}
                 </div>
               </div>
               <div className="text-xs text-[var(--macos-text-secondary)]">
@@ -515,7 +515,6 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <div className="text-sm font-medium">{track.title || track.name}</div>
-                        <div className="text-xs text-[var(--macos-text-secondary)]">{track.name}</div>
                       </div>
                       {isActive && (
                         <span className="text-xs text-[var(--macos-accent)]">
@@ -576,7 +575,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                   {currentTrack ? currentTrack.title : "No song selected"}
                 </div>
                 <div className="text-sm text-[var(--macos-text-secondary)] mt-1">
-                  {currentTrack ? currentTrack.name : "Upload mp3 files to /public/songs"}
+                  {currentTrack ? " " : "Upload mp3 files to /public/songs"}
                 </div>
               </div>
 
@@ -635,7 +634,6 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                           <div className="flex items-center justify-between gap-4">
                             <div className="min-w-0">
                               <div className="text-base font-medium truncate">{track.title || track.name}</div>
-                              <div className="text-sm text-[var(--macos-text-secondary)] truncate">{track.name}</div>
                             </div>
                             <div className="flex items-center gap-4 flex-shrink-0">
                               {rightLabel ? (
