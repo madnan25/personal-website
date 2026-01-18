@@ -165,6 +165,7 @@ const extractEmbeddedCoverFromID3 = async (url: string) => {
 export default function MusicPlayer({ variant = "macos", className }: MusicPlayerProps) {
   const [songs, setSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -179,6 +180,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
   const coverObjectUrlsRef = useRef<Set<string>>(new Set());
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const shouldAutoAdvanceRef = useRef<boolean>(false);
+  const hasLoadedOnceRef = useRef(false);
 
   const waitForCanPlay = (audio: HTMLAudioElement, timeoutMs = 2500) => {
     if (audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) return Promise.resolve();
@@ -200,7 +202,8 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
   };
 
   const fetchSongs = useCallback(async () => {
-    setIsLoading(true);
+    if (hasLoadedOnceRef.current) setIsRefreshing(true);
+    else setIsLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/songs", { cache: "no-store" });
@@ -212,6 +215,8 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
       setSongs([]);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
+      hasLoadedOnceRef.current = true;
     }
   }, []);
 
@@ -480,6 +485,17 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
     return tracks.reduce((acc, t) => (durationsByUrl[t.url] === undefined ? acc + 1 : acc), 0);
   }, [durationsByUrl, tracks]);
 
+  const SkeletonRow = ({ compact = false }: { compact?: boolean }) => (
+    <div className={cn("px-5 py-4 border-b border-white/10", compact ? "px-4 py-4" : "")}>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="h-4 w-40 bg-white/10 rounded animate-pulse" />
+        </div>
+        <div className="h-4 w-12 bg-white/10 rounded animate-pulse" />
+      </div>
+    </div>
+  );
+
   // Keep a ref for fast "already fetched" checks without re-triggering effects
   useEffect(() => {
     coverByUrlRef.current = coverByUrl;
@@ -539,13 +555,15 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
             <div className="mx-auto max-w-md">
               <div className="flex items-center justify-between mb-4">
                 <div className="text-sm text-[var(--macos-text-secondary)]">
-                  {hasSongs ? `${tracks.length} songs` : "No songs"}
+                  {isLoading ? "Loading…" : hasSongs ? `${tracks.length} songs` : "No songs"}
+                  {isRefreshing ? " · refreshing…" : ""}
                 </div>
                 <button
                   onClick={fetchSongs}
-                  className="text-xs px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/8 transition-colors"
+                  className="text-xs px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/8 transition-colors disabled:opacity-50"
+                  disabled={isLoading || isRefreshing}
                 >
-                  Refresh
+                  {isRefreshing ? "Refreshing…" : "Refresh"}
                 </button>
               </div>
 
@@ -593,12 +611,16 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                 </div>
                 <div className="rounded-2xl overflow-hidden bg-black/10 border border-white/10">
                   {isLoading ? (
-                    <div className="px-4 py-6 text-sm text-[var(--macos-text-secondary)]">Loading songs…</div>
+                    <>
+                      <SkeletonRow compact />
+                      <SkeletonRow compact />
+                      <SkeletonRow compact />
+                    </>
                   ) : error ? (
                     <div className="px-4 py-6 text-sm text-red-500">{error}</div>
                   ) : !hasSongs ? (
                     <div className="px-4 py-6 text-sm text-[var(--macos-text-secondary)]">
-                      Add mp3 files to <span className="font-medium">/public/songs</span>.
+                      No songs available yet.
                     </div>
                   ) : (
                     tracks.map((track, index) => {
@@ -820,26 +842,33 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                 <div>
                   <div className="text-2xl font-semibold">Playlist &amp; Library</div>
                   <div className="text-sm text-[var(--macos-text-secondary)]">
-                    {hasSongs ? `${tracks.length} tracks` : "No tracks found"}
+                    {isLoading ? "Loading…" : hasSongs ? `${tracks.length} tracks` : "No tracks"}
+                    {isRefreshing ? " · refreshing…" : ""}
                     {hasSongs && durationsPendingCount > 0 ? ` · loading ${durationsPendingCount}…` : ""}
                   </div>
                 </div>
                 <button
                   onClick={fetchSongs}
                   className="text-sm px-5 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/8 transition-colors"
+                  disabled={isLoading || isRefreshing}
                 >
-                  Refresh
+                  {isRefreshing ? "Refreshing…" : "Refresh"}
                 </button>
               </div>
 
               <div className="mt-4 flex-1 min-h-0 overflow-auto rounded-2xl bg-black/5">
                   {isLoading ? (
-                    <div className="px-5 py-6 text-sm text-[var(--macos-text-secondary)]">Loading songs…</div>
+                    <>
+                      <SkeletonRow />
+                      <SkeletonRow />
+                      <SkeletonRow />
+                      <SkeletonRow />
+                    </>
                   ) : error ? (
                     <div className="px-5 py-6 text-sm text-red-500">{error}</div>
                   ) : !hasSongs ? (
                     <div className="px-5 py-6 text-sm text-[var(--macos-text-secondary)]">
-                      Add mp3 files to <span className="font-medium">/public/songs</span> to see them here.
+                      No songs available yet.
                     </div>
                   ) : (
                     tracks.map((track, index) => {
