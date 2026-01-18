@@ -91,7 +91,7 @@ export default function Window({
   const x = useMotionValue(initialPosition.x);
   const y = useMotionValue(initialPosition.y);
   const scale = useMotionValue(1);
-  const { width: winWidth, height: winHeight, isResizing, startResize } = useWindowResize({
+  const { width: winWidth, height: winHeight, isResizing, startResize, setWidth, setHeight } = useWindowResize({
     minWidth,
     minHeight,
     initialWidth: width,
@@ -102,6 +102,7 @@ export default function Window({
   
   const [isMaximized, setIsMaximized] = useState(false);
   const [dragBounds, setDragBounds] = useState<{ left: number; right: number; top: number; bottom: number } | undefined>(undefined);
+  const didInitialClampRef = useRef(false);
   
   const handleMaximize = () => {
     const next = !isMaximized;
@@ -167,6 +168,40 @@ export default function Window({
     window.addEventListener('resize', recalc);
     return () => window.removeEventListener('resize', recalc);
   }, [winWidth, winHeight]);
+
+  // On first mount, clamp initial size and position so the window never opens off-screen.
+  useEffect(() => {
+    if (didInitialClampRef.current) return;
+    didInitialClampRef.current = true;
+
+    const pad = 16;
+    const top = MENU_BAR_HEIGHT_PX + 8;
+
+    // Defer 1 frame so framer-motion has mounted, then clamp.
+    const id = window.requestAnimationFrame(() => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      // Ensure size fits in viewport (respect top chrome + padding)
+      const maxW = Math.max(240, vw - pad);
+      const maxH = Math.max(240, vh - top - pad);
+      const nextW = Math.min(winWidth, maxW);
+      const nextH = Math.min(winHeight, maxH);
+      if (nextW !== winWidth) setWidth(nextW);
+      if (nextH !== winHeight) setHeight(nextH);
+
+      // Clamp position so the full window is visible
+      const maxX = Math.max(pad / 2, vw - nextW - pad / 2);
+      const maxY = Math.max(top, vh - nextH - pad);
+      const nextX = Math.max(pad / 2, Math.min(x.get(), maxX));
+      const nextY = Math.max(top, Math.min(y.get(), maxY));
+      x.set(nextX);
+      y.set(nextY);
+    });
+
+    return () => window.cancelAnimationFrame(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div ref={constraintsRef} className="fixed inset-0 pointer-events-none z-[70]">
