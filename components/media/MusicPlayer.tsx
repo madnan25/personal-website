@@ -528,7 +528,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
               </button>
             </div>
 
-            <div className="space-y-3">
+              <div className="space-y-3">
               <div className="flex items-center gap-3">
               <span className="text-xs text-[var(--macos-text-secondary)] w-10 text-right tabular-nums">
                   {formatTime(currentTime)}
@@ -551,7 +551,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                 </span>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between gap-3">
                 <button
                   onClick={() => setIsMuted((prev) => !prev)}
                   className="h-10 w-10 rounded-xl border border-white/10 bg-white/5 hover:bg-white/8 flex items-center justify-center"
@@ -565,7 +565,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                   max={100}
                   value={volume}
                   onChange={(e) => setVolume(Number(e.target.value))}
-                  className="flex-1 h-2 rounded-full cursor-pointer"
+                  className="h-2 rounded-full cursor-pointer w-[160px] md:w-[180px]"
                   style={{
                     background: `linear-gradient(to right, var(--macos-accent) 0%, var(--macos-accent) ${volumeProgress}%, var(--macos-separator) ${volumeProgress}%, var(--macos-separator) 100%)`,
                     WebkitAppearance: "none",
@@ -798,7 +798,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                   </span>
                 </div>
 
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between gap-3">
                   <button
                     onClick={() => setIsMuted((prev) => !prev)}
                     className="h-10 w-10 rounded-xl border border-white/10 bg-white/5 hover:bg-white/8 flex items-center justify-center"
@@ -812,7 +812,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                     max={100}
                     value={volume}
                     onChange={(e) => setVolume(Number(e.target.value))}
-                    className="flex-1 h-2 rounded-full cursor-pointer"
+                  className="h-2 rounded-full cursor-pointer w-[160px]"
                     style={{
                       background: `linear-gradient(to right, var(--macos-accent) 0%, var(--macos-accent) ${volumeProgress}%, var(--macos-separator) ${volumeProgress}%, var(--macos-separator) 100%)`,
                       WebkitAppearance: "none",
