@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import path from "path";
-import { readdir } from "fs/promises";
+import { readdir, stat } from "fs/promises";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,6 +19,8 @@ const SONG_DESCRIPTIONS: Record<string, string> = {
     "“Marketing Final” is a tired-but-triumphant workplace anthem about nights that quietly turn into mornings inside a marketing office. With humor, chai, Slack pings, last-minute edits, and a punch machine that flips from check-out to check-in, the song captures the blurred line between day and night, work and home. It celebrates the chaos, camaraderie, and quiet pride of a team that keeps building brands while the rest of the city sleeps—half exhausted, half alive, and fully committed.",
   [normalizeKey("It clicked late.mp3")]:
     "“It Clicked Late” is a slow-burn realization song about mistaking discipline for obstruction. Told from the perspective of a frustrated team member, it traces the shift from irritation at endless questions and delayed wins to the moment outcomes begin to compound quietly. What once felt like momentum-killing silence is revealed as noise-killing clarity—proof that some leadership only makes sense in hindsight.",
+  [normalizeKey("Silly Goose.mp3")]:
+    "“Silly Goose” is a light-hearted, self-deprecating ode to being perpetually tired, slightly lost, and still oddly functional. Through sleepy humor, everyday mishaps, and goose-mode metaphors, the song turns burnout, brain fog, and social awkwardness into something endearing—celebrating survival by vibes, snacks, and a lot of gentle honking through life.",
 };
 
 export async function GET() {
@@ -26,14 +28,27 @@ export async function GET() {
 
   try {
     const files = await readdir(songsDir);
-    const songs = files
-      .filter((file) => file.toLowerCase().endsWith(".mp3"))
-      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }))
-      .map((name) => ({
-        name,
-        url: `/songs/${encodeURIComponent(name)}`,
-        description: SONG_DESCRIPTIONS[normalizeKey(name)] ?? null,
-      }));
+    const MIN_BYTES = 4_096; // guard against incomplete uploads (e.g. empty files)
+
+    const entries = await Promise.all(
+      files
+        .filter((file) => file.toLowerCase().endsWith(".mp3"))
+        .map(async (name) => {
+          const full = path.join(songsDir, name);
+          const s = await stat(full).catch(() => null);
+          return {
+            name,
+            url: `/songs/${encodeURIComponent(name)}`,
+            description: SONG_DESCRIPTIONS[normalizeKey(name)] ?? null,
+            size: s?.size ?? 0,
+          };
+        })
+    );
+
+    const songs = entries
+      .filter((s) => s.size >= MIN_BYTES)
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }))
+      .map(({ size, ...rest }) => rest);
 
     return NextResponse.json(
       { songs },
