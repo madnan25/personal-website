@@ -9,6 +9,7 @@ type MusicPlayerVariant = "macos" | "ios";
 type Song = {
   name: string;
   url: string;
+  description?: string | null;
 };
 
 interface MusicPlayerProps {
@@ -583,7 +584,8 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                 <div className="text-sm font-semibold mb-2">About the Song</div>
                 <div className="text-sm text-[var(--macos-text-secondary)] leading-relaxed">
                   {currentTrack
-                    ? "A reflective instrumental piece to set the mood while you explore the site."
+                    ? (currentTrack.description ??
+                        "A reflective instrumental piece to set the mood while you explore the site.")
                     : "Add some mp3s and hit Refresh to build your library."}
                 </div>
               </div>
