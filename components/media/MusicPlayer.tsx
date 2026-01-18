@@ -190,14 +190,6 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
     audio.muted = isMuted;
   }, [isMuted]);
 
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (isPlaying) {
-      audio.play().catch(() => {});
-    }
-  }, [isPlaying, currentIndex]);
-
   const tracks = useMemo(
     () => songs.map((song) => ({ ...song, title: prettifyName(song.name) })),
     [songs]
@@ -267,9 +259,35 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tracks]);
 
+  const playTrackAtIndex = async (index: number, resetTime = true) => {
+    if (!tracks.length) return;
+    const safeIndex = ((index % tracks.length) + tracks.length) % tracks.length;
+    const track = tracks[safeIndex];
+    setCurrentIndex(safeIndex);
+
+    const audio = audioRef.current;
+    if (!audio) {
+      setIsPlaying(true);
+      return;
+    }
+
+    try {
+      const absolute = new URL(track.url, window.location.href).toString();
+      if (audio.src !== absolute) {
+        audio.src = track.url;
+        if (resetTime) audio.currentTime = 0;
+      }
+      // Ensure metadata is refreshed before play on iOS Safari
+      audio.load();
+      await audio.play();
+      setIsPlaying(true);
+    } catch {
+      setIsPlaying(false);
+    }
+  };
+
   const selectTrack = (index: number) => {
-    setCurrentIndex(index);
-    setIsPlaying(true);
+    void playTrackAtIndex(index, true);
   };
 
   const togglePlay = async () => {
@@ -277,6 +295,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
     if (!audio) return;
     if (audio.paused) {
       try {
+        // Calling play() from a user gesture is critical on iOS Safari.
         await audio.play();
         setIsPlaying(true);
       } catch {}
@@ -287,15 +306,11 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
   };
 
   const playNext = () => {
-    if (!tracks.length) return;
-    setCurrentIndex((prev) => (prev + 1) % tracks.length);
-    setIsPlaying(true);
+    void playTrackAtIndex(currentIndex + 1, true);
   };
 
   const playPrev = () => {
-    if (!tracks.length) return;
-    setCurrentIndex((prev) => (prev - 1 + tracks.length) % tracks.length);
-    setIsPlaying(true);
+    void playTrackAtIndex(currentIndex - 1, true);
   };
 
   const handleSeek = (value: number) => {
@@ -325,9 +340,8 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
     coverByUrlRef.current = coverByUrl;
   }, [coverByUrl]);
 
-  // Fetch embedded cover art for the currently selected track (macOS only)
+  // Fetch embedded cover art for the currently selected track (same-origin /public/songs)
   useEffect(() => {
-    if (variant !== "macos") return;
     const url = currentTrack?.url;
     if (!url) return;
     if (coverByUrlRef.current[url] !== undefined) return;
@@ -362,10 +376,11 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
   }, []);
 
   if (variant === "ios") {
+    const coverUrl = currentTrack?.url ? coverByUrl[currentTrack.url] : "";
     return (
       <div
         className={cn(
-          "h-full w-full flex flex-col gap-4 text-[var(--macos-text-primary)]",
+          "h-full w-full text-[var(--macos-text-primary)]",
           "p-4",
           className
         )}
@@ -373,160 +388,182 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
         onMouseDownCapture={preventWindowDragCapture}
         onTouchStartCapture={preventWindowDragCapture}
       >
-        <div
-          className={cn(
-            "rounded-2xl border border-[var(--macos-border)] backdrop-blur",
-            "bg-[var(--macos-surface)]/85 shadow-lg"
-          )}
-        >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--macos-border)]/60">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl flex items-center justify-center text-white bg-gradient-to-br from-pink-500 to-rose-600">
-                <Music2 className="w-5 h-5" />
+        <div className="h-full flex flex-col min-h-0">
+          {/* Scrollable content */}
+          <div className="flex-1 min-h-0 overflow-auto pb-4">
+            <div className="mx-auto max-w-md">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-sm text-[var(--macos-text-secondary)]">
+                  {hasSongs ? `${tracks.length} songs` : "No songs"}
+                </div>
+                <button
+                  onClick={fetchSongs}
+                  className="text-xs px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/8 transition-colors"
+                >
+                  Refresh
+                </button>
               </div>
-              <div>
-                <div className="text-sm font-semibold">Music</div>
-                <div className="text-xs text-[var(--macos-text-secondary)]">
-                  {hasSongs ? `${tracks.length} tracks` : "No tracks available"}
+
+              <div className="rounded-3xl overflow-hidden bg-black/15 border border-white/10 shadow-xl">
+                <div className="p-4">
+                  <div className="w-full aspect-square rounded-2xl overflow-hidden bg-black/20 relative">
+                    {coverUrl ? (
+                      <div
+                        className="absolute inset-0 bg-cover bg-center"
+                        style={{ backgroundImage: `url(${coverUrl})` }}
+                      />
+                    ) : (
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          background:
+                            "radial-gradient(circle at 30% 30%, rgba(65,234,212,0.55), transparent 45%), radial-gradient(circle at 70% 20%, rgba(56,189,248,0.45), transparent 50%), radial-gradient(circle at 50% 80%, rgba(244,63,94,0.25), transparent 55%), linear-gradient(135deg, rgba(15,23,42,0.85), rgba(30,41,59,0.85))",
+                        }}
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-black/15" />
+                    {!coverUrl && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="h-20 w-20 rounded-3xl bg-white/10 border border-white/15 backdrop-blur flex items-center justify-center shadow-2xl">
+                          <Music2 className="w-10 h-10 text-white/90" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-4">
+                    <div className="text-2xl font-semibold leading-tight">
+                      {currentTrack ? currentTrack.title : "Select a song"}
+                    </div>
+                    <div className="text-sm text-[var(--macos-text-secondary)] mt-1">
+                      {currentTrack?.description ? currentTrack.description : " "}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <div className="text-xs uppercase tracking-wide text-[var(--macos-text-secondary)] mb-2">
+                  Library
+                </div>
+                <div className="rounded-2xl overflow-hidden bg-black/10 border border-white/10">
+                  {isLoading ? (
+                    <div className="px-4 py-6 text-sm text-[var(--macos-text-secondary)]">Loading songs…</div>
+                  ) : error ? (
+                    <div className="px-4 py-6 text-sm text-red-500">{error}</div>
+                  ) : !hasSongs ? (
+                    <div className="px-4 py-6 text-sm text-[var(--macos-text-secondary)]">
+                      Add mp3 files to <span className="font-medium">/public/songs</span>.
+                    </div>
+                  ) : (
+                    tracks.map((track, index) => {
+                      const isActive = index === currentIndex;
+                      const rightLabel = isActive ? (isPlaying ? "Playing" : "Paused") : "";
+                      return (
+                        <button
+                          key={track.url}
+                          onClick={() => selectTrack(index)}
+                          className={cn(
+                            "w-full text-left px-4 py-4 border-b border-white/10 transition-colors",
+                            isActive ? "bg-[var(--macos-accent)]/18" : "hover:bg-white/5"
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-base font-medium truncate">{track.title || track.name}</div>
+                            </div>
+                            <div className="flex items-center gap-3 flex-shrink-0">
+                              {rightLabel ? (
+                                <span className="text-sm text-[var(--macos-accent)]">{rightLabel}</span>
+                              ) : null}
+                              <span className="text-sm text-[var(--macos-text-secondary)] tabular-nums">
+                                {durationLabelFor(track.url)}
+                              </span>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             </div>
-            <button
-              onClick={fetchSongs}
-              className="text-xs px-3 py-1.5 rounded-lg border border-[var(--macos-border)] text-[var(--macos-text-secondary)] hover:text-[var(--macos-text-primary)] hover:border-[var(--macos-accent)] transition-colors"
-            >
-              Refresh
-            </button>
           </div>
 
-          <div className="px-4 py-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-lg font-semibold">{currentTrack ? currentTrack.title : "Pick a track"}</div>
-                <div className="text-xs text-[var(--macos-text-secondary)]">
-                  {currentTrack ? " " : "Upload mp3 files to /public/songs"}
-                </div>
-              </div>
-              <div className="text-xs text-[var(--macos-text-secondary)]">
-                {formatTime(currentTime)} / {formatTime(duration)}
-              </div>
-            </div>
-
-            <div className="mt-4 flex items-center justify-center gap-3">
+          {/* Fixed bottom controls */}
+          <div className="border-t border-white/10 bg-black/10 backdrop-blur-xl rounded-2xl px-4 py-4">
+            <div className="flex items-center justify-center gap-4 mb-4">
               <button
                 onClick={playPrev}
                 disabled={!hasSongs}
-                className="h-10 w-10 rounded-lg border border-[var(--macos-border)] text-[var(--macos-text-primary)] hover:border-[var(--macos-accent)] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
-                aria-label="Previous track"
+                className="h-12 w-12 rounded-2xl bg-white/5 border border-white/10 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
+                aria-label="Previous"
               >
-                <SkipBack className="w-5 h-5" />
+                <SkipBack className="w-6 h-6" />
               </button>
               <button
                 onClick={togglePlay}
                 disabled={!hasSongs}
-                className="h-12 w-12 rounded-xl bg-[var(--macos-accent)] text-white hover:bg-[var(--macos-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shadow-md"
+                className="h-14 w-14 rounded-3xl bg-[var(--macos-accent)] text-white hover:bg-[var(--macos-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shadow-lg"
                 aria-label={isPlaying ? "Pause" : "Play"}
               >
-                {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
+                {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7" />}
               </button>
               <button
                 onClick={playNext}
                 disabled={!hasSongs}
-                className="h-10 w-10 rounded-lg border border-[var(--macos-border)] text-[var(--macos-text-primary)] hover:border-[var(--macos-accent)] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
-                aria-label="Next track"
+                className="h-12 w-12 rounded-2xl bg-white/5 border border-white/10 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
+                aria-label="Next"
               >
-                <SkipForward className="w-5 h-5" />
+                <SkipForward className="w-6 h-6" />
               </button>
             </div>
 
-            <div className="mt-4 flex items-center gap-3">
-              <span className="text-xs text-[var(--macos-text-secondary)] w-10 text-right">
-                {formatTime(currentTime)}
-              </span>
-              <input
-                type="range"
-                min={0}
-                max={Math.max(1, Math.floor(duration))}
-                value={Math.floor(currentTime)}
-                onChange={(e) => handleSeek(Number(e.target.value))}
-                disabled={!hasSongs}
-                className="flex-1 h-2 rounded-full cursor-pointer disabled:cursor-not-allowed"
-                style={{
-                  background: `linear-gradient(to right, var(--macos-accent) 0%, var(--macos-accent) ${sliderProgress}%, var(--macos-separator) ${sliderProgress}%, var(--macos-separator) 100%)`,
-                  WebkitAppearance: "none",
-                }}
-              />
-              <span className="text-xs text-[var(--macos-text-secondary)] w-10">{formatTime(duration)}</span>
-            </div>
-
-            <div className="mt-3 flex items-center gap-3">
-              <button
-                onClick={() => setIsMuted((prev) => !prev)}
-                className="h-9 w-9 rounded-lg border border-[var(--macos-border)] text-[var(--macos-text-primary)] hover:border-[var(--macos-accent)] flex items-center justify-center"
-                aria-label={isMuted ? "Unmute" : "Mute"}
-              >
-                {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-              </button>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={volume}
-                onChange={(e) => setVolume(Number(e.target.value))}
-                className="flex-1 h-1.5 rounded-full cursor-pointer"
-                style={{
-                  background: `linear-gradient(to right, var(--macos-accent) 0%, var(--macos-accent) ${volumeProgress}%, var(--macos-separator) ${volumeProgress}%, var(--macos-separator) 100%)`,
-                  WebkitAppearance: "none",
-                }}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div
-          className={cn(
-            "rounded-2xl border border-[var(--macos-border)] backdrop-blur",
-            "bg-[var(--macos-surface)]/80 shadow-lg"
-          )}
-        >
-          <div className="px-4 py-3 border-b border-[var(--macos-border)]/60 text-sm font-semibold">
-            Library
-          </div>
-          <div className="max-h-60 overflow-auto">
-            {isLoading ? (
-              <div className="px-4 py-6 text-sm text-[var(--macos-text-secondary)]">Loading songs…</div>
-            ) : error ? (
-              <div className="px-4 py-6 text-sm text-red-500">{error}</div>
-            ) : !hasSongs ? (
-              <div className="px-4 py-6 text-sm text-[var(--macos-text-secondary)]">
-                Add mp3 files to <span className="font-medium">/public/songs</span> to see them here.
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-[var(--macos-text-secondary)] w-10 text-right tabular-nums">
+                  {formatTime(currentTime)}
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={Math.max(1, Math.floor(duration))}
+                  value={Math.floor(currentTime)}
+                  onChange={(e) => handleSeek(Number(e.target.value))}
+                  disabled={!hasSongs}
+                  className="flex-1 h-2 rounded-full cursor-pointer disabled:cursor-not-allowed"
+                  style={{
+                    background: `linear-gradient(to right, var(--macos-accent) 0%, var(--macos-accent) ${sliderProgress}%, var(--macos-separator) ${sliderProgress}%, var(--macos-separator) 100%)`,
+                    WebkitAppearance: "none",
+                  }}
+                />
+                <span className="text-xs text-[var(--macos-text-secondary)] w-10 tabular-nums">
+                  {formatTime(duration)}
+                </span>
               </div>
-            ) : (
-              tracks.map((track, index) => {
-                const isActive = index === currentIndex;
-                return (
-                  <button
-                    key={track.url}
-                    onClick={() => selectTrack(index)}
-                    className={cn(
-                      "w-full text-left px-4 py-3 border-b border-[var(--macos-border)]/40 transition-colors",
-                      isActive ? "bg-[var(--macos-accent)]/10" : "hover:bg-[var(--macos-surface)]/60"
-                    )}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="text-sm font-medium">{track.title || track.name}</div>
-                      </div>
-                      {isActive && (
-                        <span className="text-xs text-[var(--macos-accent)]">
-                          {isPlaying ? "Playing" : "Paused"}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })
-            )}
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setIsMuted((prev) => !prev)}
+                  className="h-10 w-10 rounded-xl border border-white/10 bg-white/5 hover:bg-white/8 flex items-center justify-center"
+                  aria-label={isMuted ? "Unmute" : "Mute"}
+                >
+                  {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                </button>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={volume}
+                  onChange={(e) => setVolume(Number(e.target.value))}
+                  className="flex-1 h-2 rounded-full cursor-pointer"
+                  style={{
+                    background: `linear-gradient(to right, var(--macos-accent) 0%, var(--macos-accent) ${volumeProgress}%, var(--macos-separator) ${volumeProgress}%, var(--macos-separator) 100%)`,
+                    WebkitAppearance: "none",
+                  }}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -741,6 +778,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
         ref={audioRef}
         className="hidden"
         src={currentTrack?.url}
+        playsInline
         preload="metadata"
         onTimeUpdate={(e) => {
           const audio = e.currentTarget;
