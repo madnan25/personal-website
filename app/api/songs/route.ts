@@ -30,17 +30,36 @@ export async function GET() {
     const files = await readdir(songsDir);
     const MIN_BYTES = 4_096; // guard against incomplete uploads (e.g. empty files)
 
+    const { parseBuffer } = await import("music-metadata");
+
     const entries = await Promise.all(
       files
         .filter((file) => file.toLowerCase().endsWith(".mp3"))
         .map(async (name) => {
           const full = path.join(songsDir, name);
           const s = await stat(full).catch(() => null);
+          let durationSeconds: number | null = null;
+          let hasCover = false;
+          if ((s?.size ?? 0) >= MIN_BYTES) {
+            try {
+              // Parse local file once on the server. This is fast and avoids client-side MP3 probing.
+              const { readFile } = await import("fs/promises");
+              const buf = await readFile(full);
+              const meta = await parseBuffer(buf, "audio/mpeg", { duration: true });
+              durationSeconds = typeof meta.format.duration === "number" && Number.isFinite(meta.format.duration) ? meta.format.duration : null;
+              hasCover = Boolean(meta.common.picture?.length);
+            } catch {
+              durationSeconds = null;
+              hasCover = false;
+            }
+          }
           return {
             name,
             url: `/songs/${encodeURIComponent(name)}`,
             description: SONG_DESCRIPTIONS[normalizeKey(name)] ?? null,
             size: s?.size ?? 0,
+            durationSeconds,
+            coverUrl: hasCover ? `/api/songs/cover?name=${encodeURIComponent(name)}` : null,
           };
         })
     );

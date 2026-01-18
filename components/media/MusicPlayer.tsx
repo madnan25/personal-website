@@ -10,6 +10,8 @@ type Song = {
   name: string;
   url: string;
   description?: string | null;
+  durationSeconds?: number | null;
+  coverUrl?: string | null;
 };
 
 interface MusicPlayerProps {
@@ -29,138 +31,7 @@ const prettifyName = (name: string) => {
   return base.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
 };
 
-const readSynchsafeInt = (b0: number, b1: number, b2: number, b3: number) => {
-  return ((b0 & 0x7f) << 21) | ((b1 & 0x7f) << 14) | ((b2 & 0x7f) << 7) | (b3 & 0x7f);
-};
-
-const readUint32BE = (view: DataView, offset: number) => {
-  return (
-    (view.getUint8(offset) << 24) |
-    (view.getUint8(offset + 1) << 16) |
-    (view.getUint8(offset + 2) << 8) |
-    view.getUint8(offset + 3)
-  ) >>> 0;
-};
-
-const findZero = (bytes: Uint8Array, start: number) => {
-  for (let i = start; i < bytes.length; i++) if (bytes[i] === 0) return i;
-  return -1;
-};
-
-const findZeroUTF16 = (bytes: Uint8Array, start: number) => {
-  for (let i = start; i + 1 < bytes.length; i += 2) {
-    if (bytes[i] === 0 && bytes[i + 1] === 0) return i;
-  }
-  return -1;
-};
-
-const extractEmbeddedCoverFromID3 = async (url: string) => {
-  const INITIAL_BYTES = 96_000; // fast initial probe (~96KB)
-  const MAX_BYTES = 1_200_000; // cap expanded fetch to keep things snappy
-
-  const fetchRange = async (endExclusive: number) => {
-    const end = Math.max(0, endExclusive - 1);
-    let res: Response | null = null;
-    try {
-      res = await fetch(url, { headers: { Range: `bytes=0-${end}` } });
-    } catch {
-      return null;
-    }
-    if (!res || !(res.ok || res.status === 206)) return null;
-    const buf = await res.arrayBuffer();
-    const bytes = new Uint8Array(buf);
-    // If server ignored Range and returned more, slice down to requested size.
-    return bytes.length > endExclusive ? bytes.subarray(0, endExclusive) : bytes;
-  };
-
-  // 1) Small probe to read ID3 header + tag size
-  let bytes = await fetchRange(INITIAL_BYTES);
-  if (!bytes || bytes.length < 10) return null;
-  if (bytes[0] !== 0x49 || bytes[1] !== 0x44 || bytes[2] !== 0x33) return null; // "ID3"
-
-  const versionMajor = bytes[3]; // 3 or 4 are common
-  const flags = bytes[5];
-  const tagSize = readSynchsafeInt(bytes[6], bytes[7], bytes[8], bytes[9]); // excludes header/footer
-  const needBytes = Math.min(10 + tagSize + (flags & 0x10 ? 10 : 0), MAX_BYTES);
-
-  // 2) If the full tag doesn't fit in the probe, re-fetch just enough to parse frames quickly
-  if (needBytes > bytes.length) {
-    const expanded = await fetchRange(needBytes);
-    if (!expanded || expanded.length < 10) return null;
-    bytes = expanded;
-  }
-
-  const tagEnd = Math.min(10 + tagSize, bytes.length);
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-
-  let offset = 10;
-  // Skip extended header if present (common in some encoders)
-  if (flags & 0x40) {
-    if (versionMajor === 3) {
-      if (offset + 4 <= tagEnd) {
-        const extSize = readUint32BE(view, offset);
-        // extSize usually includes the 4 bytes; clamp defensively
-        offset = Math.min(tagEnd, offset + Math.max(4, extSize));
-      }
-    } else if (versionMajor === 4) {
-      if (offset + 4 <= tagEnd) {
-        const extSize = readSynchsafeInt(bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]);
-        offset = Math.min(tagEnd, offset + Math.max(4, extSize));
-      }
-    }
-  }
-
-  while (offset + 10 <= tagEnd) {
-    const id = String.fromCharCode(bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]);
-    // Padding reached
-    if (id === "\u0000\u0000\u0000\u0000") break;
-
-    const size =
-      versionMajor === 4
-        ? readSynchsafeInt(bytes[offset + 4], bytes[offset + 5], bytes[offset + 6], bytes[offset + 7])
-        : readUint32BE(view, offset + 4);
-    const frameStart = offset + 10;
-    const frameEnd = Math.min(frameStart + size, tagEnd);
-    if (size <= 0 || frameStart >= tagEnd) break;
-
-    if (id === "APIC" && frameEnd > frameStart + 10) {
-      const frame = bytes.subarray(frameStart, frameEnd);
-      const encoding = frame[0]; // 0=latin1, 1=utf16, 2=utf16be, 3=utf8
-      let cursor = 1;
-
-      const mimeEnd = findZero(frame, cursor);
-      if (mimeEnd === -1) return null;
-      const mime = new TextDecoder("latin1").decode(frame.subarray(cursor, mimeEnd)).trim();
-      cursor = mimeEnd + 1;
-      if (cursor >= frame.length) return null;
-
-      // pictureType
-      cursor += 1;
-      if (cursor >= frame.length) return null;
-
-      // description (encoding-dependent)
-      if (encoding === 1 || encoding === 2) {
-        const descEnd = findZeroUTF16(frame, cursor);
-        if (descEnd === -1) return null;
-        cursor = descEnd + 2;
-      } else {
-        const descEnd = findZero(frame, cursor);
-        if (descEnd === -1) return null;
-        cursor = descEnd + 1;
-      }
-      if (cursor >= frame.length) return null;
-
-      const imageData = frame.subarray(cursor);
-      if (!imageData.length) return null;
-      const blob = new Blob([imageData], { type: mime || "image/jpeg" });
-      return URL.createObjectURL(blob);
-    }
-
-    offset = frameEnd;
-  }
-
-  return null;
-};
+// Cover art is served by /api/songs/cover (server-side extraction) to keep the UI snappy.
 
 export default function MusicPlayer({ variant = "macos", className }: MusicPlayerProps) {
   const [songs, setSongs] = useState<Song[]>([]);
@@ -174,10 +45,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [durationsByUrl, setDurationsByUrl] = useState<Record<string, number>>({});
-  const [coverByUrl, setCoverByUrl] = useState<Record<string, string>>({});
   const [playError, setPlayError] = useState<string | null>(null);
-  const coverByUrlRef = useRef<Record<string, string>>({});
-  const coverObjectUrlsRef = useRef<Set<string>>(new Set());
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const shouldAutoAdvanceRef = useRef<boolean>(false);
   const hasLoadedOnceRef = useRef(false);
@@ -209,7 +77,18 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
       const res = await fetch("/api/songs", { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to load songs");
       const data = (await res.json()) as { songs?: Song[] };
-      setSongs(Array.isArray(data.songs) ? data.songs : []);
+      const nextSongs = Array.isArray(data.songs) ? data.songs : [];
+      setSongs(nextSongs);
+      // Seed durations instantly from server-provided values (no client-side probing needed).
+      setDurationsByUrl((prev) => {
+        const next = { ...prev };
+        for (const s of nextSongs) {
+          if (s?.url && typeof s.durationSeconds === "number" && Number.isFinite(s.durationSeconds) && s.durationSeconds > 0) {
+            next[s.url] = s.durationSeconds;
+          }
+        }
+        return next;
+      });
     } catch {
       setError("Could not load songs.");
       setSongs([]);
@@ -304,7 +183,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
     };
   }, [variant, isPlaying]);
 
-  // Background-load durations for playlist items (metadata only)
+  // Background-load durations for playlist items only when server didn't provide them.
   useEffect(() => {
     if (!tracks.length) {
       setDurationsByUrl({});
@@ -496,48 +375,9 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
     </div>
   );
 
-  // Keep a ref for fast "already fetched" checks without re-triggering effects
-  useEffect(() => {
-    coverByUrlRef.current = coverByUrl;
-  }, [coverByUrl]);
-
-  // Fetch embedded cover art for the currently selected track (same-origin /public/songs)
-  useEffect(() => {
-    const url = currentTrack?.url;
-    if (!url) return;
-    if (coverByUrlRef.current[url] !== undefined) return;
-
-    let cancelled = false;
-    (async () => {
-      const cover = await extractEmbeddedCoverFromID3(url);
-      if (cancelled) {
-        if (cover) URL.revokeObjectURL(cover);
-        return;
-      }
-      if (cover) coverObjectUrlsRef.current.add(cover);
-      setCoverByUrl((prev) => ({ ...prev, [url]: cover ?? "" }));
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [variant, currentTrack?.url]);
-
-  // Cleanup blob URLs on unmount
-  useEffect(() => {
-    const urls = coverObjectUrlsRef.current;
-    return () => {
-      urls.forEach((u) => {
-        try {
-          URL.revokeObjectURL(u);
-        } catch {}
-      });
-      urls.clear();
-    };
-  }, []);
+  const coverUrl = currentTrack?.coverUrl || "";
 
   if (variant === "ios") {
-    const coverUrl = currentTrack?.url ? coverByUrl[currentTrack.url] : "";
     return (
       <div
         className={cn(
@@ -571,10 +411,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                 <div className="p-4">
                   <div className="w-full aspect-square rounded-2xl overflow-hidden bg-black/20 relative">
                     {coverUrl ? (
-                      <div
-                        className="absolute inset-0 bg-cover bg-center"
-                        style={{ backgroundImage: `url(${coverUrl})` }}
-                      />
+                      <img src={coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
                     ) : (
                       <div
                         className="absolute inset-0"
@@ -792,11 +629,8 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
             {/* Left: Now Playing (single surface, no extra card) */}
             <div className="p-4 md:p-6 border-b md:border-b-0 md:border-r border-[var(--macos-glass-border)]/70 min-h-0 overflow-auto pr-3">
               <div className="aspect-square relative overflow-hidden rounded-2xl bg-black/10">
-                  {currentTrack?.url && coverByUrl[currentTrack.url] ? (
-                    <div
-                      className="absolute inset-0 bg-cover bg-center"
-                      style={{ backgroundImage: `url(${coverByUrl[currentTrack.url]})` }}
-                    />
+                  {coverUrl ? (
+                    <img src={coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
                   ) : (
                     <div
                       className="absolute inset-0"
@@ -807,7 +641,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                     />
                   )}
                   <div className="absolute inset-0 bg-black/20" />
-                  {!currentTrack?.url || !coverByUrl[currentTrack.url] ? (
+                  {!coverUrl ? (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="h-24 w-24 rounded-3xl bg-white/10 border border-white/15 backdrop-blur flex items-center justify-center shadow-2xl">
                         <Music2 className="w-12 h-12 text-white/90" />
