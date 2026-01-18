@@ -55,27 +55,61 @@ const findZeroUTF16 = (bytes: Uint8Array, start: number) => {
 };
 
 const extractEmbeddedCoverFromID3 = async (url: string) => {
-  // Fetch a small initial chunk; ID3 headers & APIC are typically near the start.
-  const maxBytes = 512_000; // 512KB cap
-  let res: Response | null = null;
-  try {
-    res = await fetch(url, { headers: { Range: `bytes=0-${maxBytes - 1}` } });
-  } catch {
-    return null;
-  }
-  if (!res || !(res.ok || res.status === 206)) return null;
+  const INITIAL_BYTES = 96_000; // fast initial probe (~96KB)
+  const MAX_BYTES = 1_200_000; // cap expanded fetch to keep things snappy
 
-  const buf = await res.arrayBuffer();
-  const bytes = new Uint8Array(buf);
-  if (bytes.length < 10) return null;
+  const fetchRange = async (endExclusive: number) => {
+    const end = Math.max(0, endExclusive - 1);
+    let res: Response | null = null;
+    try {
+      res = await fetch(url, { headers: { Range: `bytes=0-${end}` } });
+    } catch {
+      return null;
+    }
+    if (!res || !(res.ok || res.status === 206)) return null;
+    const buf = await res.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    // If server ignored Range and returned more, slice down to requested size.
+    return bytes.length > endExclusive ? bytes.subarray(0, endExclusive) : bytes;
+  };
+
+  // 1) Small probe to read ID3 header + tag size
+  let bytes = await fetchRange(INITIAL_BYTES);
+  if (!bytes || bytes.length < 10) return null;
   if (bytes[0] !== 0x49 || bytes[1] !== 0x44 || bytes[2] !== 0x33) return null; // "ID3"
 
   const versionMajor = bytes[3]; // 3 or 4 are common
-  const tagSize = readSynchsafeInt(bytes[6], bytes[7], bytes[8], bytes[9]);
+  const flags = bytes[5];
+  const tagSize = readSynchsafeInt(bytes[6], bytes[7], bytes[8], bytes[9]); // excludes header/footer
+  const needBytes = Math.min(10 + tagSize + (flags & 0x10 ? 10 : 0), MAX_BYTES);
+
+  // 2) If the full tag doesn't fit in the probe, re-fetch just enough to parse frames quickly
+  if (needBytes > bytes.length) {
+    const expanded = await fetchRange(needBytes);
+    if (!expanded || expanded.length < 10) return null;
+    bytes = expanded;
+  }
+
   const tagEnd = Math.min(10 + tagSize, bytes.length);
-  const view = new DataView(buf);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 
   let offset = 10;
+  // Skip extended header if present (common in some encoders)
+  if (flags & 0x40) {
+    if (versionMajor === 3) {
+      if (offset + 4 <= tagEnd) {
+        const extSize = readUint32BE(view, offset);
+        // extSize usually includes the 4 bytes; clamp defensively
+        offset = Math.min(tagEnd, offset + Math.max(4, extSize));
+      }
+    } else if (versionMajor === 4) {
+      if (offset + 4 <= tagEnd) {
+        const extSize = readSynchsafeInt(bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]);
+        offset = Math.min(tagEnd, offset + Math.max(4, extSize));
+      }
+    }
+  }
+
   while (offset + 10 <= tagEnd) {
     const id = String.fromCharCode(bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]);
     // Padding reached
@@ -277,7 +311,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
     const pending = urls.filter((u) => durationsByUrl[u] === undefined);
     if (!pending.length) return;
 
-    const concurrency = 3;
+    const concurrency = 2;
     let idx = 0;
 
     const loadOne = async (url: string) => {
@@ -285,10 +319,16 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
         const a = new Audio();
         a.preload = "metadata";
         a.src = url;
+        // Some browsers need an explicit load() to kick off metadata fetching.
+        try {
+          a.load();
+        } catch {}
 
+        let timeoutId: number | null = null;
         const done = (value: number | null) => {
           a.removeEventListener("loadedmetadata", onMeta);
           a.removeEventListener("error", onErr);
+          if (timeoutId) window.clearTimeout(timeoutId);
           try {
             a.src = "";
           } catch {}
@@ -303,6 +343,9 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
 
         a.addEventListener("loadedmetadata", onMeta, { once: true });
         a.addEventListener("error", onErr, { once: true });
+
+        // Prevent hanging forever if metadata never loads (e.g. Safari edge cases).
+        timeoutId = window.setTimeout(() => done(null), 5000) as unknown as number;
       });
     };
 
@@ -311,9 +354,8 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
         const url = pending[idx++];
         const d = await loadOne(url);
         if (cancelled) return;
-        if (typeof d === "number") {
-          setDurationsByUrl((prev) => (prev[url] === undefined ? { ...prev, [url]: d } : prev));
-        }
+        // Store 0 for failures/timeouts so UI stops waiting.
+        setDurationsByUrl((prev) => (prev[url] === undefined ? { ...prev, [url]: typeof d === "number" ? d : 0 } : prev));
       }
     };
 
@@ -428,9 +470,15 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
 
   const durationLabelFor = (trackUrl: string) => {
     const d = durationsByUrl[trackUrl];
+    if (d === undefined) return "…";
     if (typeof d !== "number" || !Number.isFinite(d) || d <= 0) return "--:--";
     return formatTime(d);
   };
+
+  const durationsPendingCount = useMemo(() => {
+    if (!tracks.length) return 0;
+    return tracks.reduce((acc, t) => (durationsByUrl[t.url] === undefined ? acc + 1 : acc), 0);
+  }, [durationsByUrl, tracks]);
 
   // Keep a ref for fast "already fetched" checks without re-triggering effects
   useEffect(() => {
@@ -773,6 +821,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                   <div className="text-2xl font-semibold">Playlist &amp; Library</div>
                   <div className="text-sm text-[var(--macos-text-secondary)]">
                     {hasSongs ? `${tracks.length} tracks` : "No tracks found"}
+                    {hasSongs && durationsPendingCount > 0 ? ` · loading ${durationsPendingCount}…` : ""}
                   </div>
                 </div>
                 <button
