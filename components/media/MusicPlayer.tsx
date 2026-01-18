@@ -327,6 +327,12 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
     if (!audio) return;
     if (audio.paused) {
       try {
+        // If src isn't ready yet (can happen on iOS), set it and load before play.
+        if (!audio.getAttribute("src") && currentTrack?.url) {
+          audio.src = currentTrack.url;
+          audio.currentTime = 0;
+          audio.load();
+        }
         // Calling play() from a user gesture is critical on iOS Safari.
         await audio.play();
         setIsPlaying(true);
@@ -352,9 +358,10 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
     setCurrentTime(value);
   };
 
-  // Prevent window drag on all pointer events (capture phase to beat framer-motion drag on Window)
+  // Prevent window drag on macOS only (capture phase to beat framer-motion drag on Window)
+  // IMPORTANT: do NOT stop propagation on iOS — it can break Safari's user-gesture detection for audio.play().
   const preventWindowDragCapture = (e: React.SyntheticEvent) => {
-    e.stopPropagation();
+    if (variant === "macos") e.stopPropagation();
   };
 
   const hasSongs = tracks.length > 0;
