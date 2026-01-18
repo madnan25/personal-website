@@ -197,6 +197,38 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
 
   const currentTrack = tracks[currentIndex];
 
+  const effectiveDuration =
+    currentTrack?.url ? duration || durationsByUrl[currentTrack.url] || 0 : duration;
+
+  // Keep the audio element in sync with the selected track (helps iOS where metadata often stays 0 until load/play).
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const url = currentTrack?.url;
+    if (!url) {
+      try {
+        audio.removeAttribute("src");
+        audio.load();
+      } catch {}
+      setCurrentTime(0);
+      setDuration(0);
+      setIsPlaying(false);
+      return;
+    }
+
+    // If React hasn't updated the element yet or we imperatively changed src, ensure it matches.
+    const currentSrcAttr = audio.getAttribute("src") || "";
+    if (currentSrcAttr !== url) {
+      audio.src = url;
+      audio.currentTime = 0;
+      setCurrentTime(0);
+      setDuration(0);
+      // Trigger a metadata fetch; iOS often needs an explicit load().
+      audio.load();
+    }
+  }, [currentTrack?.url]);
+
   // Background-load durations for playlist items (metadata only)
   useEffect(() => {
     if (!tracks.length) {
@@ -326,7 +358,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
   };
 
   const hasSongs = tracks.length > 0;
-  const sliderProgress = duration ? (currentTime / duration) * 100 : 0;
+  const sliderProgress = effectiveDuration ? (currentTime / effectiveDuration) * 100 : 0;
   const volumeProgress = volume;
 
   const durationLabelFor = (trackUrl: string) => {
@@ -521,13 +553,13 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
 
             <div className="space-y-3">
               <div className="flex items-center gap-3">
-                <span className="text-xs text-[var(--macos-text-secondary)] w-10 text-right tabular-nums">
+              <span className="text-xs text-[var(--macos-text-secondary)] w-10 text-right tabular-nums">
                   {formatTime(currentTime)}
                 </span>
                 <input
                   type="range"
                   min={0}
-                  max={Math.max(1, Math.floor(duration))}
+                max={Math.max(1, Math.floor(effectiveDuration))}
                   value={Math.floor(currentTime)}
                   onChange={(e) => handleSeek(Number(e.target.value))}
                   disabled={!hasSongs}
@@ -538,7 +570,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                   }}
                 />
                 <span className="text-xs text-[var(--macos-text-secondary)] w-10 tabular-nums">
-                  {formatTime(duration)}
+                {formatTime(effectiveDuration)}
                 </span>
               </div>
 
@@ -733,7 +765,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                   <input
                     type="range"
                     min={0}
-                    max={Math.max(1, Math.floor(duration))}
+                    max={Math.max(1, Math.floor(effectiveDuration))}
                     value={Math.floor(currentTime)}
                     onChange={(e) => handleSeek(Number(e.target.value))}
                     disabled={!hasSongs}
@@ -744,7 +776,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                     }}
                   />
                   <span className="text-xs text-[var(--macos-text-secondary)] w-12 tabular-nums">
-                    {formatTime(duration)}
+                    {formatTime(effectiveDuration)}
                   </span>
                 </div>
 
@@ -786,6 +818,10 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
           setDuration(audio.duration || 0);
         }}
         onLoadedMetadata={(e) => {
+          const audio = e.currentTarget;
+          setDuration(audio.duration || 0);
+        }}
+        onDurationChange={(e) => {
           const audio = e.currentTarget;
           setDuration(audio.duration || 0);
         }}
