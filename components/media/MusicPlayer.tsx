@@ -144,6 +144,26 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
   const coverByUrlRef = useRef<Record<string, string>>({});
   const coverObjectUrlsRef = useRef<Set<string>>(new Set());
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const shouldAutoAdvanceRef = useRef<boolean>(false);
+
+  const waitForCanPlay = (audio: HTMLAudioElement, timeoutMs = 2500) => {
+    if (audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        audio.removeEventListener("canplay", finish);
+        audio.removeEventListener("canplaythrough", finish);
+        audio.removeEventListener("loadeddata", finish);
+        resolve();
+      };
+      audio.addEventListener("canplay", finish, { once: true });
+      audio.addEventListener("canplaythrough", finish, { once: true });
+      audio.addEventListener("loadeddata", finish, { once: true });
+      window.setTimeout(finish, timeoutMs);
+    });
+  };
 
   const fetchSongs = useCallback(async () => {
     setIsLoading(true);
@@ -328,6 +348,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
       }
       // Ensure metadata is refreshed before play on iOS Safari
       audio.load();
+      await waitForCanPlay(audio);
       await audio.play();
       setIsPlaying(true);
     } catch (e) {
@@ -363,9 +384,11 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
           audio.currentTime = 0;
         }
         audio.load();
+        await waitForCanPlay(audio);
         // Calling play() from a user gesture is critical on iOS Safari.
         await audio.play();
         setIsPlaying(true);
+        shouldAutoAdvanceRef.current = true;
       } catch (e) {
         const err = e as { name?: string; message?: string };
         setPlayError(err?.name ? `${err.name}${err.message ? `: ${err.message}` : ""}` : "Failed to play audio");
@@ -373,6 +396,8 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
     } else {
       audio.pause();
       setIsPlaying(false);
+      // If the user manually paused, don't autoplay the next track.
+      shouldAutoAdvanceRef.current = false;
     }
   };
 
@@ -870,9 +895,25 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
           const audio = e.currentTarget;
           setDuration(audio.duration || 0);
         }}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        onEnded={playNext}
+        onPlay={() => {
+          setIsPlaying(true);
+          shouldAutoAdvanceRef.current = true;
+        }}
+        onPause={(e) => {
+          setIsPlaying(false);
+          // If paused not because it ended, treat it as user pause.
+          const a = e.currentTarget;
+          if (!a.ended) shouldAutoAdvanceRef.current = false;
+        }}
+        onEnded={() => {
+          // Autoplay next only if the user didn't pause.
+          if (shouldAutoAdvanceRef.current) {
+            playNext();
+          } else {
+            // Still advance selection, but don't force playback.
+            setCurrentIndex((prev) => (tracks.length ? (prev + 1) % tracks.length : prev));
+          }
+        }}
       />
     </div>
   );
