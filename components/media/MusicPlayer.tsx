@@ -668,6 +668,42 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
             </div>
           </div>
         </div>
+      <audio
+        ref={audioRef}
+        className="sr-only"
+        src={currentTrack?.url}
+        playsInline
+        preload="metadata"
+        onTimeUpdate={(e) => {
+          const audio = e.currentTarget;
+          setCurrentTime(audio.currentTime);
+          setDuration(audio.duration || 0);
+        }}
+        onLoadedMetadata={(e) => {
+          const audio = e.currentTarget;
+          setDuration(audio.duration || 0);
+        }}
+        onDurationChange={(e) => {
+          const audio = e.currentTarget;
+          setDuration(audio.duration || 0);
+        }}
+        onPlay={() => {
+          setIsPlaying(true);
+          shouldAutoAdvanceRef.current = true;
+        }}
+        onPause={(e) => {
+          setIsPlaying(false);
+          const a = e.currentTarget;
+          if (!a.ended) shouldAutoAdvanceRef.current = false;
+        }}
+        onEnded={() => {
+          if (shouldAutoAdvanceRef.current) {
+            playNext();
+          } else {
+            setCurrentIndex((prev) => (tracks.length ? (prev + 1) % tracks.length : prev));
+          }
+        }}
+      />
       </div>
     );
   }
