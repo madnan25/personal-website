@@ -752,10 +752,10 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
 
           {/* Bottom bar: controls always visible */}
           <div className="px-4 md:px-6 py-4 border-t border-white/10 bg-black/10 backdrop-blur-xl">
-            <div className="flex flex-col gap-3">
-              {/* Row 1: Transport + Seek */}
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3 flex-shrink-0">
+            {/* Premium layout: Transport (left) + Seek (center) + Volume (right) */}
+            <div className="flex flex-col md:flex-row md:items-center gap-4">
+              {/* Transport */}
+              <div className="flex items-center gap-3 flex-shrink-0 justify-center md:justify-start">
                   <button
                     onClick={playPrev}
                     disabled={!hasSongs}
@@ -780,33 +780,33 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                   >
                     <SkipForward className="w-6 h-6" />
                   </button>
-                </div>
-
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <span className="text-xs text-[var(--macos-text-secondary)] w-12 text-right tabular-nums">
-                    {formatTime(currentTime)}
-                  </span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={Math.max(1, Math.floor(effectiveDuration))}
-                    value={Math.floor(currentTime)}
-                    onChange={(e) => handleSeek(Number(e.target.value))}
-                    disabled={!hasSongs}
-                    className="flex-1 h-2 rounded-full cursor-pointer disabled:cursor-not-allowed"
-                    style={{
-                      background: `linear-gradient(to right, var(--macos-accent) 0%, var(--macos-accent) ${sliderProgress}%, var(--macos-separator) ${sliderProgress}%, var(--macos-separator) 100%)`,
-                      WebkitAppearance: "none",
-                    }}
-                  />
-                  <span className="text-xs text-[var(--macos-text-secondary)] w-12 tabular-nums">
-                    {formatTime(effectiveDuration)}
-                  </span>
-                </div>
               </div>
 
-              {/* Row 2: Volume (right-aligned, close to icon) */}
-              <div className="flex items-center justify-end gap-3">
+              {/* Seek */}
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <span className="text-xs text-[var(--macos-text-secondary)] w-12 text-right tabular-nums">
+                  {formatTime(currentTime)}
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={Math.max(1, Math.floor(effectiveDuration))}
+                  value={Math.floor(currentTime)}
+                  onChange={(e) => handleSeek(Number(e.target.value))}
+                  disabled={!hasSongs}
+                  className="flex-1 h-2 rounded-full cursor-pointer disabled:cursor-not-allowed"
+                  style={{
+                    background: `linear-gradient(to right, var(--macos-accent) 0%, var(--macos-accent) ${sliderProgress}%, var(--macos-separator) ${sliderProgress}%, var(--macos-separator) 100%)`,
+                    WebkitAppearance: "none",
+                  }}
+                />
+                <span className="text-xs text-[var(--macos-text-secondary)] w-12 tabular-nums">
+                  {formatTime(effectiveDuration)}
+                </span>
+              </div>
+
+              {/* Volume */}
+              <div className="flex items-center gap-3 justify-center md:justify-end flex-shrink-0">
                 <button
                   onClick={() => setIsMuted((prev) => !prev)}
                   className="h-10 w-10 rounded-xl border border-white/10 bg-white/5 hover:bg-white/8 flex items-center justify-center"
@@ -820,7 +820,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                   max={100}
                   value={volume}
                   onChange={(e) => setVolume(Number(e.target.value))}
-                  className="h-2 rounded-full cursor-pointer w-[140px] md:w-[160px]"
+                  className="h-2 rounded-full cursor-pointer w-[140px]"
                   style={{
                     background: `linear-gradient(to right, var(--macos-accent) 0%, var(--macos-accent) ${volumeProgress}%, var(--macos-separator) ${volumeProgress}%, var(--macos-separator) 100%)`,
                     WebkitAppearance: "none",
