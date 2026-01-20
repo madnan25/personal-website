@@ -508,42 +508,68 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                 Playback error: {playError}. If you’re on iOS, try tapping Play again (Safari requires a direct user gesture).
               </div>
             )}
-            <div className="flex items-center justify-center gap-4 mb-4">
-              <button
-                onClick={playPrev}
-                disabled={!hasSongs}
-                className="h-12 w-12 rounded-2xl bg-white/5 border border-white/10 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
-                aria-label="Previous"
-              >
-                <SkipBack className="w-6 h-6" />
-              </button>
-              <button
-                onClick={togglePlay}
-                disabled={!hasSongs}
-                className="h-14 w-14 rounded-3xl bg-[var(--macos-accent)] text-white hover:bg-[var(--macos-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shadow-lg"
-                aria-label={isPlaying ? "Pause" : "Play"}
-              >
-                {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7" />}
-              </button>
-              <button
-                onClick={playNext}
-                disabled={!hasSongs}
-                className="h-12 w-12 rounded-2xl bg-white/5 border border-white/10 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
-                aria-label="Next"
-              >
-                <SkipForward className="w-6 h-6" />
-              </button>
-            </div>
+            <div className="flex flex-col gap-3">
+              {/* Row 1: Transport + Volume (integrated) */}
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={playPrev}
+                    disabled={!hasSongs}
+                    className="h-12 w-12 rounded-2xl bg-white/5 border border-white/10 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
+                    aria-label="Previous"
+                  >
+                    <SkipBack className="w-6 h-6" />
+                  </button>
+                  <button
+                    onClick={togglePlay}
+                    disabled={!hasSongs}
+                    className="h-14 w-14 rounded-3xl bg-[var(--macos-accent)] text-white hover:bg-[var(--macos-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shadow-lg"
+                    aria-label={isPlaying ? "Pause" : "Play"}
+                  >
+                    {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7" />}
+                  </button>
+                  <button
+                    onClick={playNext}
+                    disabled={!hasSongs}
+                    className="h-12 w-12 rounded-2xl bg-white/5 border border-white/10 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
+                    aria-label="Next"
+                  >
+                    <SkipForward className="w-6 h-6" />
+                  </button>
+                </div>
 
-              <div className="space-y-3">
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <button
+                    onClick={() => setIsMuted((prev) => !prev)}
+                    className="h-10 w-10 rounded-xl border border-white/10 bg-white/5 hover:bg-white/8 flex items-center justify-center"
+                    aria-label={isMuted ? "Unmute" : "Mute"}
+                  >
+                    {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                  </button>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={volume}
+                    onChange={(e) => setVolume(Number(e.target.value))}
+                    className="h-2 rounded-full cursor-pointer w-[120px]"
+                    style={{
+                      background: `linear-gradient(to right, var(--macos-accent) 0%, var(--macos-accent) ${volumeProgress}%, var(--macos-separator) ${volumeProgress}%, var(--macos-separator) 100%)`,
+                      WebkitAppearance: "none",
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: Seek */}
               <div className="flex items-center gap-3">
-              <span className="text-xs text-[var(--macos-text-secondary)] w-10 text-right tabular-nums">
+                <span className="text-xs text-[var(--macos-text-secondary)] w-10 text-right tabular-nums">
                   {formatTime(currentTime)}
                 </span>
                 <input
                   type="range"
                   min={0}
-                max={Math.max(1, Math.floor(effectiveDuration))}
+                  max={Math.max(1, Math.floor(effectiveDuration))}
                   value={Math.floor(currentTime)}
                   onChange={(e) => handleSeek(Number(e.target.value))}
                   disabled={!hasSongs}
@@ -554,30 +580,8 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                   }}
                 />
                 <span className="text-xs text-[var(--macos-text-secondary)] w-10 tabular-nums">
-                {formatTime(effectiveDuration)}
+                  {formatTime(effectiveDuration)}
                 </span>
-              </div>
-
-              <div className="flex items-center gap-3 justify-end">
-                <button
-                  onClick={() => setIsMuted((prev) => !prev)}
-                  className="h-10 w-10 rounded-xl border border-white/10 bg-white/5 hover:bg-white/8 flex items-center justify-center"
-                  aria-label={isMuted ? "Unmute" : "Mute"}
-                >
-                  {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-                </button>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={volume}
-                  onChange={(e) => setVolume(Number(e.target.value))}
-                  className="h-2 rounded-full cursor-pointer w-[140px] md:w-[160px]"
-                  style={{
-                    background: `linear-gradient(to right, var(--macos-accent) 0%, var(--macos-accent) ${volumeProgress}%, var(--macos-separator) ${volumeProgress}%, var(--macos-separator) 100%)`,
-                    WebkitAppearance: "none",
-                  }}
-                />
               </div>
             </div>
           </div>
