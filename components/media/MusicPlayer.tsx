@@ -41,7 +41,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [volume, setVolume] = useState(75);
+  const [volume, setVolume] = useState(40);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [durationsByUrl, setDurationsByUrl] = useState<Record<string, number>>({});
@@ -128,6 +128,11 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
     if (!audio) return;
     audio.muted = isMuted;
   }, [isMuted]);
+
+  const applyAudioSettings = (audio: HTMLAudioElement) => {
+    audio.volume = volume / 100;
+    audio.muted = isMuted;
+  };
 
   const tracks = useMemo(
     () => songs.map((song) => ({ ...song, title: prettifyName(song.name) })),
@@ -274,6 +279,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
       }
       // Ensure metadata is refreshed before play on iOS Safari
       audio.load();
+      applyAudioSettings(audio);
       await waitForCanPlay(audio);
       await audio.play();
       setIsPlaying(true);
@@ -310,6 +316,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
           audio.currentTime = 0;
         }
         audio.load();
+        applyAudioSettings(audio);
         await waitForCanPlay(audio);
         // Calling play() from a user gesture is critical on iOS Safari.
         await audio.play();
@@ -745,38 +752,37 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
 
           {/* Bottom bar: controls always visible */}
           <div className="px-4 md:px-6 py-4 border-t border-white/10 bg-black/10 backdrop-blur-xl">
-            <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4 items-center">
-              {/* Transport */}
-              <div className="flex items-center gap-3 justify-center md:justify-start">
-                <button
-                  onClick={playPrev}
-                  disabled={!hasSongs}
-                  className="h-11 w-11 rounded-xl bg-[var(--macos-accent)]/20 border border-[var(--macos-accent)]/25 hover:bg-[var(--macos-accent)]/25 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
-                  aria-label="Previous track"
-                >
-                  <SkipBack className="w-6 h-6" />
-                </button>
-                <button
-                  onClick={togglePlay}
-                  disabled={!hasSongs}
-                  className="h-12 w-12 rounded-2xl bg-[var(--macos-accent)] text-white hover:bg-[var(--macos-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shadow-lg"
-                  aria-label={isPlaying ? "Pause" : "Play"}
-                >
-                  {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7" />}
-                </button>
-                <button
-                  onClick={playNext}
-                  disabled={!hasSongs}
-                  className="h-11 w-11 rounded-xl bg-[var(--macos-accent)]/20 border border-[var(--macos-accent)]/25 hover:bg-[var(--macos-accent)]/25 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
-                  aria-label="Next track"
-                >
-                  <SkipForward className="w-6 h-6" />
-                </button>
-              </div>
+            <div className="flex flex-col gap-3">
+              {/* Row 1: Transport + Seek */}
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <button
+                    onClick={playPrev}
+                    disabled={!hasSongs}
+                    className="h-11 w-11 rounded-xl bg-[var(--macos-accent)]/20 border border-[var(--macos-accent)]/25 hover:bg-[var(--macos-accent)]/25 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
+                    aria-label="Previous track"
+                  >
+                    <SkipBack className="w-6 h-6" />
+                  </button>
+                  <button
+                    onClick={togglePlay}
+                    disabled={!hasSongs}
+                    className="h-12 w-12 rounded-2xl bg-[var(--macos-accent)] text-white hover:bg-[var(--macos-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shadow-lg"
+                    aria-label={isPlaying ? "Pause" : "Play"}
+                  >
+                    {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7" />}
+                  </button>
+                  <button
+                    onClick={playNext}
+                    disabled={!hasSongs}
+                    className="h-11 w-11 rounded-xl bg-[var(--macos-accent)]/20 border border-[var(--macos-accent)]/25 hover:bg-[var(--macos-accent)]/25 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
+                    aria-label="Next track"
+                  >
+                    <SkipForward className="w-6 h-6" />
+                  </button>
+                </div>
 
-              {/* Seek + Volume */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
                   <span className="text-xs text-[var(--macos-text-secondary)] w-12 text-right tabular-nums">
                     {formatTime(currentTime)}
                   </span>
@@ -797,28 +803,29 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                     {formatTime(effectiveDuration)}
                   </span>
                 </div>
+              </div>
 
-              <div className="flex items-center gap-3 justify-end">
-                  <button
-                    onClick={() => setIsMuted((prev) => !prev)}
-                    className="h-10 w-10 rounded-xl border border-white/10 bg-white/5 hover:bg-white/8 flex items-center justify-center"
-                    aria-label={isMuted ? "Unmute" : "Mute"}
-                  >
-                    {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-                  </button>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={volume}
-                    onChange={(e) => setVolume(Number(e.target.value))}
+              {/* Row 2: Volume (right-aligned, close to icon) */}
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setIsMuted((prev) => !prev)}
+                  className="h-10 w-10 rounded-xl border border-white/10 bg-white/5 hover:bg-white/8 flex items-center justify-center"
+                  aria-label={isMuted ? "Unmute" : "Mute"}
+                >
+                  {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                </button>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={volume}
+                  onChange={(e) => setVolume(Number(e.target.value))}
                   className="h-2 rounded-full cursor-pointer w-[140px] md:w-[160px]"
-                    style={{
-                      background: `linear-gradient(to right, var(--macos-accent) 0%, var(--macos-accent) ${volumeProgress}%, var(--macos-separator) ${volumeProgress}%, var(--macos-separator) 100%)`,
-                      WebkitAppearance: "none",
-                    }}
-                  />
-                </div>
+                  style={{
+                    background: `linear-gradient(to right, var(--macos-accent) 0%, var(--macos-accent) ${volumeProgress}%, var(--macos-separator) ${volumeProgress}%, var(--macos-separator) 100%)`,
+                    WebkitAppearance: "none",
+                  }}
+                />
               </div>
             </div>
           </div>
