@@ -510,8 +510,8 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
             )}
             <div className="flex flex-col gap-3">
               {/* Row 1: Transport + Volume (integrated) */}
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
+                <div className="flex items-center gap-4 flex-shrink-0">
                   <button
                     onClick={playPrev}
                     disabled={!hasSongs}
@@ -552,7 +552,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                     max={100}
                     value={volume}
                     onChange={(e) => setVolume(Number(e.target.value))}
-                    className="h-2 rounded-full cursor-pointer w-[120px]"
+                    className="h-2 rounded-full cursor-pointer w-[100px] max-w-[34vw]"
                     style={{
                       background: `linear-gradient(to right, var(--macos-accent) 0%, var(--macos-accent) ${volumeProgress}%, var(--macos-separator) ${volumeProgress}%, var(--macos-separator) 100%)`,
                       WebkitAppearance: "none",
