@@ -17,6 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://dayemadnan.com"),
   title: "Mohammad Dayem Adnan — Builder of teams, products, and wins",
   description: "I build teams, products, and repeatable wins. CMO at The Vertical, Founder at Voortgang, and Head of Delivery at NettaWorks—combining design thinking and ruthless prioritization to deliver results.",
   icons: {

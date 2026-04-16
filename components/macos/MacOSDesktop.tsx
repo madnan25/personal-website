@@ -11,7 +11,6 @@ import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } fro
 import BlogTemplate from "@/components/blog/BlogTemplate";
 import { blogPosts } from "@/lib/blog";
 import { DockProvider, useDockContext } from "./DockContext";
-// import { cn } from "@/lib/utils";
 import { TerminalSquare, FileVideo, Calendar, Linkedin } from "lucide-react";
 import MediaPlayer from "./MediaPlayer";
 import MusicPlayer from "@/components/media/MusicPlayer";
@@ -27,7 +26,14 @@ interface WindowState {
   position: { x: number; y: number };
 }
 
+// Memoize individual window components so unrelated state changes in the desktop shell
+// (e.g. wallpaper selection, another window toggling) don't re-render every window body.
 const MemoBlogWindow = memo(BlogWindow);
+const MemoAboutWindow = memo(AboutWindow);
+const MemoContactWindow = memo(ContactWindow);
+const MemoSettingsWindow = memo(SettingsWindow);
+const MemoTerminalWindow = memo(TerminalWindow);
+const MemoTrashWindow = memo(TrashWindow);
 
 function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initialSelectedBlogId?: string; initialOpenWindow?: 'blog' | 'about' | 'portfolio' | 'projects' | 'contact' | 'settings' | 'terminal' | 'media' | 'music' | 'trash' }) {
   const router = useRouter();
@@ -49,6 +55,7 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
   const [isTopHover, setIsTopHover] = useState<boolean>(false);
   const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
   const REVEAL_STRIP_HEIGHT_PX = 14; // increase hover activation area
+  const HIDE_BARS_DELAY_MS = 200; // delay before hiding menu/dock in full-screen mode
   // Desktop shortcut positions (session memory)
   const [shortcutPositions, setShortcutPositions] = useState<{ [key: string]: { left: number; top: number } }>({
     "the-vertical": { left: 24, top: 80 },
@@ -86,7 +93,7 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
     if (!isAnyMaximized) return;
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     // Hide both bars together with same timing
-    hideTimerRef.current = setTimeout(() => setIsTopHover(false), 200);
+    hideTimerRef.current = setTimeout(() => setIsTopHover(false), HIDE_BARS_DELAY_MS);
   };
   const [windows, setWindows] = useState<WindowState[]>([
     {
@@ -144,7 +151,7 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
       isOpen: false,
       isMinimized: false,
       position: { x: 140, y: 160 },
-      component: <TrashWindow onOpenMedia={() => openWindowById('media')} />
+      component: <MemoTrashWindow onOpenMedia={() => openWindowById('media')} />
     },
     {
       id: 'terminal',
@@ -493,37 +500,37 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
                 onScrollTopChange={() => { /* no-op to avoid state churn during scroll */ }}
               />
             ) : window.id === 'about' ? (
-              <AboutWindow 
+              <MemoAboutWindow
                 initialScrollTop={scrollMemory['about'] ?? 0}
                 onScrollTopChange={(t) => setScrollMemory(prev => ({ ...prev, about: t }))}
                 onOpenWindow={(id) => openWindowById(id)}
               />
             ) : window.id === 'settings' ? (
-              <SettingsWindow 
+              <MemoSettingsWindow
                 onSetWallpaper={setWallpaperSrc}
                 initialScrollTop={scrollMemory['settings'] ?? 0}
                 onScrollTopChange={(t) => setScrollMemory(prev => ({ ...prev, settings: t }))}
               />
             ) : window.id === 'portfolio' ? (
-              <PlaceholderWindow 
+              <PlaceholderWindow
                 title="Portfolio"
                 initialScrollTop={scrollMemory['portfolio'] ?? 0}
                 onScrollTopChange={(t) => setScrollMemory(prev => ({ ...prev, portfolio: t }))}
               />
             ) : window.id === 'projects' ? (
-              <PlaceholderWindow 
+              <PlaceholderWindow
                 title="Projects"
                 initialScrollTop={scrollMemory['projects'] ?? 0}
                 onScrollTopChange={(t) => setScrollMemory(prev => ({ ...prev, projects: t }))}
               />
             ) : window.id === 'contact' ? (
-              <ContactWindow 
+              <MemoContactWindow
                 initialScrollTop={scrollMemory['contact'] ?? 0}
                 onScrollTopChange={(t) => setScrollMemory(prev => ({ ...prev, contact: t }))}
               />
             ) : window.id === 'terminal' ? (
-              <TerminalWindow 
-                onRunCommand={(cmd) => runCommand(cmd)} 
+              <MemoTerminalWindow
+                onRunCommand={(cmd) => runCommand(cmd)}
                 onRequestClose={() => handleWindowClose('terminal')}
                 initialScrollTop={scrollMemory['terminal'] ?? 0}
                 onScrollTopChange={(t) => setScrollMemory(prev => ({ ...prev, terminal: t }))}
@@ -1042,7 +1049,7 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
   useEffect(() => { onScrollTopChangeRef.current = onScrollTopChange; }, [onScrollTopChange]);
   const userScrolledRef = useRef<boolean>(false);
   // Removed scroll persistence; keep minimal refs only
-  const [dynamicBlocks, setDynamicBlocks] = useState<typeof selected | null>(null);
+  const [postHtml, setPostHtml] = useState<string | null>(null);
   const [isLoadingBlocks, setIsLoadingBlocks] = useState(false);
   const [blocksError, setBlocksError] = useState<string | null>(null);
   useEffect(() => {
@@ -1061,22 +1068,19 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
       }
     };
   }, []);
-  // Dynamically import per-post blocks for file-backed posts (no inline content)
+  // Fetch compiled HTML from the blog API (same source used for SSR)
   useEffect(() => {
     let cancelled = false;
-    setDynamicBlocks(null);
+    setPostHtml(null);
     setBlocksError(null);
-    if (!selected || (selected.content && selected.content.length > 0)) return;
+    if (!selected) return;
     setIsLoadingBlocks(true);
-    ;(async () => {
+    (async () => {
       try {
-        if (selected.id === 'in-defense-of-bubbles') {
-          const mod = await import('@/lib/posts/in-defense-of-bubbles');
-          if (!cancelled) setDynamicBlocks({ ...selected, content: mod.content });
-        } else if (selected.id === 'build-things-that-matter') {
-          const mod = await import('@/lib/posts/build-things-that-matter');
-          if (!cancelled) setDynamicBlocks({ ...selected, content: mod.content });
-        }
+        const res = await fetch(`/api/blog/${selected.id}`, { cache: 'force-cache' });
+        if (!res.ok) throw new Error('not ok');
+        const data: { html: string } = await res.json();
+        if (!cancelled) setPostHtml(data.html);
       } catch {
         if (!cancelled) setBlocksError('Failed to load article');
       } finally {
@@ -1092,7 +1096,7 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
   useLayoutEffect(() => {
     if (!mainRef.current) return;
     mainRef.current.scrollTop = 0;
-  }, [selectedId, dynamicBlocks]);
+  }, [selectedId, postHtml]);
   // Extra guard: if DOM height changes right after mount, re-apply once
   useEffect(() => {
     if (!mainRef.current) return;
@@ -1168,14 +1172,12 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
               <div className="text-sm">Choose from the list on the left.</div>
             </div>
           </div>
-        ) : selected.content && selected.content.length > 0 ? (
-          <BlogTemplate post={selected} />
         ) : isLoadingBlocks ? (
           <div className="text-[var(--macos-text-secondary)]">Loading…</div>
         ) : blocksError ? (
           <div className="text-red-500">{blocksError}</div>
-        ) : dynamicBlocks ? (
-          <BlogTemplate post={dynamicBlocks} />
+        ) : postHtml ? (
+          <BlogTemplate meta={selected} html={postHtml} />
         ) : null}
       </main>
     </div>

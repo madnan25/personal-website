@@ -4,6 +4,7 @@ import * as contact from '../app/api/contact/helpers';
 describe('contact route helpers', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    process.env.RESEND_FROM = 'test@example.com';
   });
 
   it('validateEmail works for simple cases', () => {
@@ -62,10 +63,8 @@ describe('contact route helpers', () => {
 
   it('buildEmailPayload includes replyTo only when email valid', () => {
     const a = contact.buildEmailPayload('A', 'a@b.com', '', 'other', '');
-    // @ts-expect-error
     expect(a.replyTo).toBe('a@b.com');
     const b = contact.buildEmailPayload('A', 'bad', '', 'other', '');
-    // @ts-expect-error
     expect(b.replyTo).toBeUndefined();
   });
 });

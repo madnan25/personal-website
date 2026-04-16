@@ -249,6 +249,152 @@ h2, h3 {
   border-color: color-mix(in srgb, var(--macos-accent) 30%, transparent) !important;
 }
 
+/* Blog prose styling — preserves the BlockRenderer visual from the legacy TS blocks */
+.blog-prose {
+  color: var(--macos-text-secondary);
+  font-size: 1rem;
+  line-height: 2rem;
+}
+@media (min-width: 768px) {
+  .blog-prose {
+    font-size: 1.125rem;
+  }
+}
+.blog-prose > * + * {
+  margin-top: 1.5rem;
+}
+@media (min-width: 768px) {
+  .blog-prose > * + * {
+    margin-top: 2rem;
+  }
+}
+.blog-prose h2 {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--macos-accent);
+  margin-top: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+.blog-prose h2::after {
+  content: '';
+  display: block;
+  height: 2px;
+  width: 3rem;
+  background-color: var(--macos-accent);
+  border-radius: 9999px;
+  margin-top: 0.5rem;
+}
+@media (min-width: 768px) {
+  .blog-prose h2 {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
+}
+.blog-prose h3 {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  color: var(--macos-accent);
+  margin-top: 2rem;
+  margin-bottom: 0.25rem;
+}
+@media (min-width: 768px) {
+  .blog-prose h3 {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+}
+.blog-prose p {
+  color: var(--macos-text-secondary);
+}
+.blog-prose ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: var(--macos-text-secondary);
+}
+@media (min-width: 768px) {
+  .blog-prose ul {
+    padding-left: 2rem;
+  }
+}
+.blog-prose ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: var(--macos-text-secondary);
+}
+@media (min-width: 768px) {
+  .blog-prose ol {
+    padding-left: 2rem;
+  }
+}
+.blog-prose li > * + * {
+  margin-top: 0.5rem;
+}
+.blog-prose blockquote {
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--macos-accent) 30%, transparent);
+  background-color: color-mix(in srgb, var(--macos-accent) 10%, transparent);
+  padding: 1rem;
+  font-style: italic;
+  color: var(--macos-text-secondary);
+}
+@media (min-width: 768px) {
+  .blog-prose blockquote {
+    padding: 1.25rem;
+  }
+}
+.blog-prose blockquote > * + * {
+  margin-top: 0.5rem;
+}
+.blog-prose blockquote p {
+  margin: 0;
+}
+.blog-prose a {
+  color: var(--macos-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.blog-prose a:hover {
+  color: var(--macos-accent-hover);
+}
+.blog-prose strong {
+  font-weight: 600;
+  color: var(--macos-text-primary);
+}
+.blog-prose em {
+  font-style: italic;
+}
+.blog-prose code {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.9em;
+  background-color: color-mix(in srgb, var(--macos-accent) 8%, transparent);
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+}
+.blog-prose pre {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, monospace;
+  background-color: var(--macos-surface);
+  border: 1px solid var(--macos-border);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.blog-prose pre code {
+  background: transparent;
+  padding: 0;
+}
+
 /* macOS boot-style determinate progress bar */
 .macos-progress {
   position: relative;

@@ -39,7 +39,10 @@ export async function GET() {
         .filter((file) => file.toLowerCase().endsWith(".mp3"))
         .map(async (name) => {
           const full = path.join(songsDir, name);
-          const s = await stat(full).catch(() => null);
+          const s = await stat(full).catch((err) => {
+            console.warn("[songs] stat failed", name, err);
+            return null;
+          });
           let durationSeconds: number | null = null;
           let hasCover = false;
           if ((s?.size ?? 0) >= MIN_BYTES) {
@@ -50,7 +53,8 @@ export async function GET() {
               const meta = await parseBuffer(buf, "audio/mpeg", { duration: true });
               durationSeconds = typeof meta.format.duration === "number" && Number.isFinite(meta.format.duration) ? meta.format.duration : null;
               hasCover = Boolean(meta.common.picture?.length);
-            } catch {
+            } catch (err) {
+              console.warn("[songs] metadata parse failed", name, err);
               durationSeconds = null;
               hasCover = false;
             }
@@ -75,7 +79,8 @@ export async function GET() {
       { songs },
       { headers: { "Cache-Control": "no-store" } }
     );
-  } catch {
+  } catch (err) {
+    console.error("[songs] list failed", err);
     return NextResponse.json(
       { songs: [] },
       { headers: { "Cache-Control": "no-store" } }

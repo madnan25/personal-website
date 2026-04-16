@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, PanInfo } from "framer-motion";
 import StatusBar from "./StatusBar";
 import HomeScreen from "./HomeScreen";
@@ -8,6 +9,7 @@ import AppWindow from "./AppWindow";
 import ControlCenter from "./ControlCenter";
 import { blogPosts } from "@/lib/blog";
 import BlogTemplate from "@/components/blog/BlogTemplate";
+import AboutContent from "@/components/hero/AboutContent";
 import { Calendar, Linkedin } from "lucide-react";
 import MusicPlayer from "@/components/media/MusicPlayer";
 
@@ -32,8 +34,11 @@ interface AppState {
 type WallpaperOption = 'video' | 'mobile1' | 'inouske' | 'luffyPhone' | 'luffyKaido';
 
 export default function IOSDevice() {
+  const pathname = usePathname();
+  const router = useRouter();
   const [controlCenterOpen, setControlCenterOpen] = useState(false);
   const [wallpaper, setWallpaper] = useState<WallpaperOption>('luffyPhone');
+  const [blogInitialSlug, setBlogInitialSlug] = useState<string | null>(null);
 
   // Load/persist wallpaper preference
   useEffect(() => {
@@ -49,6 +54,7 @@ export default function IOSDevice() {
       window.localStorage.setItem('ios_wallpaper', wallpaper);
     } catch {}
   }, [wallpaper]);
+
   const [apps, setApps] = useState<Record<string, AppState>>({
     about: {
       id: 'about',
@@ -94,11 +100,33 @@ export default function IOSDevice() {
     },
   });
 
+  // URL-aware deep linking: open the matching app when navigated directly.
+  // Home (/) intentionally no-ops so the default home-screen flow is preserved.
+  useEffect(() => {
+    if (typeof pathname !== 'string') return;
+    if (pathname === '/about') {
+      setApps(prev => ({ ...prev, about: { ...prev.about, isOpen: true } }));
+      return;
+    }
+    if (pathname === '/blog') {
+      setBlogInitialSlug(null);
+      setApps(prev => ({ ...prev, blog: { ...prev.blog, isOpen: true } }));
+      return;
+    }
+    const blogMatch = pathname.match(/^\/blog\/(.+)$/);
+    if (blogMatch) {
+      setBlogInitialSlug(blogMatch[1]);
+      setApps(prev => ({ ...prev, blog: { ...prev.blog, isOpen: true } }));
+      return;
+    }
+  }, [pathname]);
+
   const handleControlCenterDrag = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    const startX = (event as MouseEvent).clientX || 
-                  ((event as TouchEvent).touches && (event as TouchEvent).touches[0]?.clientX) || 0;
+    const startX = "touches" in event
+      ? event.touches[0]?.clientX ?? 0
+      : event.clientX ?? 0;
     const windowWidth = window.innerWidth;
-    
+
     if (startX > windowWidth * 0.7 && info.offset.y > 50) {
       setControlCenterOpen(true);
     }
@@ -116,6 +144,14 @@ export default function IOSDevice() {
       ...prev,
       [appId]: { ...prev[appId], isOpen: false }
     }));
+    if (appId === 'blog') setBlogInitialSlug(null);
+    if (typeof pathname === 'string') {
+      if (appId === 'blog' && pathname.startsWith('/blog')) {
+        router.push('/', { scroll: false });
+      } else if (appId === 'about' && pathname === '/about') {
+        router.push('/', { scroll: false });
+      }
+    }
   };
 
   return (
@@ -188,6 +224,8 @@ export default function IOSDevice() {
         >
           {id === 'settings' ? (
             <SettingsApp wallpaper={wallpaper} onChange={setWallpaper} />
+          ) : id === 'blog' ? (
+            <BlogApp initialSlug={blogInitialSlug} />
           ) : (
             app.component
           )}
@@ -205,10 +243,8 @@ export default function IOSDevice() {
 function AboutApp() {
   return (
     <div className="p-0">
-      {/* Embed the shared AboutContent for consistent copy/design */}
       <div className="px-4 py-4">
-        {/* eslint-disable-next-line @typescript-eslint/no-require-imports */}
-        {require('@/components/hero/AboutContent').default()}
+        <AboutContent />
       </div>
     </div>
   );
@@ -275,6 +311,11 @@ function ContactApp() {
     if (typeof window === 'undefined' || widgetIdRef.current) return;
     const container = widgetContainerRef.current;
     if (!container) return;
+    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    if (!siteKey) {
+      setVerificationMessage('Verification unavailable. Please use an alternate contact method below.');
+      return;
+    }
     // Script is loaded globally in app/layout.tsx to avoid duplicate loads
     const onReady = () => {
       // Defer render until after animations/layout settle to avoid "Node cannot be found" from iframe
@@ -283,7 +324,7 @@ function ContactApp() {
           if (!container || widgetIdRef.current || !window.turnstile) return;
           try {
             widgetIdRef.current = window.turnstile.render(container, {
-              sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '0x4AAAAAAABkMYinukE8nz0Y',
+              sitekey: siteKey,
               theme: 'auto',
               size: 'flexible',
               callback: (token: string) => { setTurnstileToken(token); setVerificationMessage(null); },
@@ -481,35 +522,39 @@ function ContactApp() {
   );
 }
 
-function BlogApp() {
-  const [selected, setSelected] = useState<string | null>(null);
+function BlogApp({ initialSlug = null }: { initialSlug?: string | null }) {
+  const [selected, setSelected] = useState<string | null>(initialSlug);
+  const appliedSlugRef = useRef<string | null>(initialSlug);
+  useEffect(() => {
+    if (initialSlug && appliedSlugRef.current !== initialSlug) {
+      appliedSlugRef.current = initialSlug;
+      setSelected(initialSlug);
+    }
+  }, [initialSlug]);
   const post = blogPosts.find((p) => p.id === selected) || null;
-  const [dynamicPost, setDynamicPost] = useState<typeof post | null>(null);
+  const [html, setHtml] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load file-backed content for selected post
   useEffect(() => {
-    setDynamicPost(null);
+    setHtml(null);
     setError(null);
     if (!post) return;
-    if (post.content && post.content.length > 0) return;
+    let cancelled = false;
     setIsLoading(true);
     (async () => {
       try {
-        if (post.id === 'in-defense-of-bubbles') {
-          const mod = await import('@/lib/posts/in-defense-of-bubbles');
-          setDynamicPost({ ...post, content: mod.content });
-        } else if (post.id === 'build-things-that-matter') {
-          const mod = await import('@/lib/posts/build-things-that-matter');
-          setDynamicPost({ ...post, content: mod.content });
-        }
+        const res = await fetch(`/api/blog/${post.id}`, { cache: 'force-cache' });
+        if (!res.ok) throw new Error('not ok');
+        const data: { html: string } = await res.json();
+        if (!cancelled) setHtml(data.html);
       } catch {
-        setError('Failed to load article');
+        if (!cancelled) setError('Failed to load article');
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     })();
+    return () => { cancelled = true; };
   }, [post]);
 
   return (
@@ -534,9 +579,9 @@ function BlogApp() {
             <div className="text-[var(--macos-text-secondary)]">Loading…</div>
           ) : error ? (
             <div className="text-red-500">{error}</div>
-          ) : (
-            <BlogTemplate post={dynamicPost ?? post} />
-          )}
+          ) : html ? (
+            <BlogTemplate meta={post} html={html} />
+          ) : null}
         </div>
       )}
     </div>

@@ -1,19 +1,12 @@
-export type BlogBlock =
-  | { type: 'heading'; level: 2 | 3; text: string }
-  | { type: 'paragraph'; text: string }
-  | { type: 'quote'; text: string }
-  | { type: 'list'; items: string[] };
-
-export interface BlogPost {
+export interface BlogPostMeta {
   id: string; // slug
   title: string;
   description: string;
   date: string; // ISO
   readingMinutes: number;
-  content: BlogBlock[];
 }
 
-export const blogPosts: BlogPost[] = [
+export const blogPosts: BlogPostMeta[] = [
   {
     id: 'in-defense-of-bubbles',
     title: 'In Defense of Bubbles',
@@ -21,8 +14,6 @@ export const blogPosts: BlogPost[] = [
       'Bubbles look messy, but they upgrade the infrastructure, methods, and people that power the next decade.',
     date: '2025-10-04',
     readingMinutes: 7,
-    // File-based content to avoid bundling large blocks in client
-    content: [],
   },
   {
     id: 'build-things-that-matter',
@@ -31,9 +22,11 @@ export const blogPosts: BlogPost[] = [
       'On using AI as an apprentice, shipping narrow tools that remove real pain, and measuring value with ruthless clarity.',
     date: '2025-09-29',
     readingMinutes: 9,
-    // File-based content to avoid bundling large blocks in client
-    content: [],
   },
 ];
 
+export const VALID_POST_SLUG_REGEX = /^[a-z0-9-]{1,64}$/;
 
+export function isValidSlug(slug: string): boolean {
+  return VALID_POST_SLUG_REGEX.test(slug);
+}

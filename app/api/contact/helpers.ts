@@ -122,10 +122,13 @@ export async function requireTurnstileOrThrow(
   if (res.success) return;
   const codes = Array.isArray(res.errorCodes) ? res.errorCodes : [];
   if (codes.includes('missing-secret')) {
+    console.warn('[contact] turnstile missing server secret');
     throw new HttpError(500, 'Verification service not configured.');
   }
-  const suffix = codes.length > 0 ? ` (${codes.join(', ')})` : '';
-  throw new HttpError(400, `Verification failed${suffix}.`);
+  if (codes.length > 0) {
+    console.warn('[contact] turnstile verification failed', { codes });
+  }
+  throw new HttpError(400, 'Verification failed.');
 }
 
 export function getResendOrThrow() {
@@ -145,7 +148,10 @@ export function buildEmailPayload(
   subjectKey: ContactPayload['subject'],
   message: string
 ) {
-  const fromAddress = process.env.RESEND_FROM || 'onboarding@resend.dev';
+  const fromAddress = process.env.RESEND_FROM;
+  if (!fromAddress) {
+    throw new HttpError(500, 'Email service not configured.');
+  }
   const toAddress = 'madnan@voortgang.io';
   const subject = SUBJECT_LABELS[subjectKey] ?? SUBJECT_LABELS.other;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Music2, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +30,54 @@ const prettifyName = (name: string) => {
   const base = name.replace(/\.[^/.]+$/, "");
   return base.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
 };
+
+// Concurrency and timeout for client-side duration probing when the server didn't supply a value.
+const METADATA_LOAD_CONCURRENCY = 2;
+const METADATA_LOAD_TIMEOUT_MS = 5000;
+
+interface TrackRowProps {
+  index: number;
+  title: string;
+  isActive: boolean;
+  isPlaying: boolean;
+  rightTime: string;
+  variant: MusicPlayerVariant;
+  onSelect: (index: number) => void;
+}
+
+const TrackRow = memo(function TrackRow({
+  index, title, isActive, isPlaying, rightTime, variant, onSelect,
+}: TrackRowProps) {
+  const rightLabel = isActive ? (isPlaying ? "Playing" : "Paused") : "";
+  const isMac = variant === "macos";
+  return (
+    <button
+      onClick={() => onSelect(index)}
+      className={cn(
+        "w-full text-left border-b border-white/10 transition-colors",
+        isMac ? "px-5 py-4" : "px-4 py-4",
+        isActive ? "bg-[var(--macos-accent)]/18" : "hover:bg-white/5"
+      )}
+    >
+      <div className={cn("flex items-center justify-between", isMac ? "gap-4" : "gap-3")}>
+        <div className="min-w-0">
+          <div className="text-base font-medium truncate">{title}</div>
+        </div>
+        <div className={cn("flex items-center flex-shrink-0", isMac ? "gap-4" : "gap-3")}>
+          {rightLabel ? (
+            <span className="text-sm text-[var(--macos-accent)]">{rightLabel}</span>
+          ) : isMac ? (
+            <span className="text-sm text-[var(--macos-text-secondary)]">&nbsp;</span>
+          ) : null}
+          <span className={cn(
+            "text-sm text-[var(--macos-text-secondary)] tabular-nums",
+            isMac && "w-12 text-right"
+          )}>{rightTime}</span>
+        </div>
+      </div>
+    </button>
+  );
+});
 
 // Cover art is served by /api/songs/cover (server-side extraction) to keep the UI snappy.
 
@@ -201,7 +249,6 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
     const pending = urls.filter((u) => durationsByUrl[u] === undefined);
     if (!pending.length) return;
 
-    const concurrency = 2;
     let idx = 0;
 
     const loadOne = async (url: string) => {
@@ -235,7 +282,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
         a.addEventListener("error", onErr, { once: true });
 
         // Prevent hanging forever if metadata never loads (e.g. Safari edge cases).
-        timeoutId = window.setTimeout(() => done(null), 5000) as unknown as number;
+        timeoutId = window.setTimeout(() => done(null), METADATA_LOAD_TIMEOUT_MS) as unknown as number;
       });
     };
 
@@ -249,7 +296,7 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
       }
     };
 
-    const workers = Array.from({ length: Math.min(concurrency, pending.length) }, () => pump());
+    const workers = Array.from({ length: Math.min(METADATA_LOAD_CONCURRENCY, pending.length) }, () => pump());
     void Promise.all(workers);
 
     return () => {
@@ -291,9 +338,11 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
     }
   };
 
-  const selectTrack = (index: number) => {
+  const selectTrackRef = useRef<(index: number) => void>(() => {});
+  selectTrackRef.current = (index: number) => {
     void playTrackAtIndex(index, true);
   };
+  const selectTrack = useCallback((index: number) => selectTrackRef.current(index), []);
 
   const togglePlay = async () => {
     const audio = audioRef.current;
@@ -419,7 +468,12 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                 <div className="p-4">
                   <div className="w-full aspect-square rounded-2xl overflow-hidden bg-black/20 relative">
                     {coverUrl ? (
-                      <img src={coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
+                      <img
+                        src={coverUrl}
+                        alt={currentTrack ? `${prettifyName(currentTrack.name)} album cover` : ""}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        draggable={false}
+                      />
                     ) : (
                       <div
                         className="absolute inset-0"
@@ -468,34 +522,18 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                       No songs available yet.
                     </div>
                   ) : (
-                    tracks.map((track, index) => {
-                      const isActive = index === currentIndex;
-                      const rightLabel = isActive ? (isPlaying ? "Playing" : "Paused") : "";
-                      return (
-                        <button
-                          key={track.url}
-                          onClick={() => selectTrack(index)}
-                          className={cn(
-                            "w-full text-left px-4 py-4 border-b border-white/10 transition-colors",
-                            isActive ? "bg-[var(--macos-accent)]/18" : "hover:bg-white/5"
-                          )}
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="text-base font-medium truncate">{track.title || track.name}</div>
-                            </div>
-                            <div className="flex items-center gap-3 flex-shrink-0">
-                              {rightLabel ? (
-                                <span className="text-sm text-[var(--macos-accent)]">{rightLabel}</span>
-                              ) : null}
-                              <span className="text-sm text-[var(--macos-text-secondary)] tabular-nums">
-                                {durationLabelFor(track.url)}
-                              </span>
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })
+                    tracks.map((track, index) => (
+                      <TrackRow
+                        key={track.url}
+                        index={index}
+                        title={track.title || track.name}
+                        isActive={index === currentIndex}
+                        isPlaying={isPlaying}
+                        rightTime={durationLabelFor(track.url)}
+                        variant="ios"
+                        onSelect={selectTrack}
+                      />
+                    ))
                   )}
                 </div>
               </div>
@@ -662,7 +700,12 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
             <div className="p-4 md:p-6 border-b md:border-b-0 md:border-r border-[var(--macos-glass-border)]/70 min-h-0 overflow-auto pr-3">
               <div className="aspect-square relative overflow-hidden rounded-2xl bg-black/10">
                   {coverUrl ? (
-                    <img src={coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
+                    <img
+                      src={coverUrl}
+                      alt={currentTrack ? `${prettifyName(currentTrack.name)} album cover` : ""}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      draggable={false}
+                    />
                   ) : (
                     <div
                       className="absolute inset-0"
@@ -739,35 +782,20 @@ export default function MusicPlayer({ variant = "macos", className }: MusicPlaye
                   ) : (
                     tracks.map((track, index) => {
                       const isActive = index === currentIndex;
-                      const rightLabel = isActive ? (isPlaying ? "Playing" : "Paused") : "";
                       const rightTime = isActive
                         ? formatTime(duration || durationsByUrl[track.url] || 0)
                         : durationLabelFor(track.url);
                       return (
-                        <button
+                        <TrackRow
                           key={track.url}
-                          onClick={() => selectTrack(index)}
-                          className={cn(
-                            "w-full text-left px-5 py-4 border-b border-white/10 transition-colors",
-                            isActive ? "bg-[var(--macos-accent)]/18" : "hover:bg-white/5"
-                          )}
-                        >
-                          <div className="flex items-center justify-between gap-4">
-                            <div className="min-w-0">
-                              <div className="text-base font-medium truncate">{track.title || track.name}</div>
-                            </div>
-                            <div className="flex items-center gap-4 flex-shrink-0">
-                              {rightLabel ? (
-                                <div className="text-sm text-[var(--macos-accent)]">{rightLabel}</div>
-                              ) : (
-                                <div className="text-sm text-[var(--macos-text-secondary)]">&nbsp;</div>
-                              )}
-                              <div className="text-sm text-[var(--macos-text-secondary)] tabular-nums w-12 text-right">
-                                {rightTime}
-                              </div>
-                            </div>
-                          </div>
-                        </button>
+                          index={index}
+                          title={track.title || track.name}
+                          isActive={isActive}
+                          isPlaying={isPlaying}
+                          rightTime={rightTime}
+                          variant="macos"
+                          onSelect={selectTrack}
+                        />
                       );
                     })
                   )}
