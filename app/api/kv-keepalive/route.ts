@@ -18,12 +18,16 @@ export async function GET() {
     });
     const txt = await res.text().catch(() => '');
     const ok = res.ok && txt.includes('PONG');
-    return new Response(JSON.stringify({ ok, backend: 'upstash', httpOk: res.ok, body: ok ? 'PONG' : txt.slice(0, 120) }), {
+    if (!ok) {
+      console.warn('[kv-keepalive] upstash ping failed', { httpOk: res.ok, sample: txt.slice(0, 120) });
+    }
+    return new Response(JSON.stringify({ ok, backend: 'upstash' }), {
       status: ok ? 200 : 502,
       headers: { 'Content-Type': 'application/json' },
     });
-  } catch {
-    return new Response(JSON.stringify({ ok: false, backend: 'upstash', error: 'ping-failed' }), {
+  } catch (err) {
+    console.warn('[kv-keepalive] upstash ping threw', err);
+    return new Response(JSON.stringify({ ok: false, backend: 'upstash' }), {
       status: 502,
       headers: { 'Content-Type': 'application/json' },
     });

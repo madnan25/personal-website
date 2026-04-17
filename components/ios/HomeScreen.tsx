@@ -121,8 +121,8 @@ export default function HomeScreen({ onAppOpen, className }: HomeScreenProps) {
         <div className="rounded-2xl p-0">
           <div className="flex justify-center space-x-4 sm:space-x-6">
             <AppIcon icon={<IoCallOutline className="w-7 h-7" />} label="Contact" gradient="bg-gradient-to-br from-green-500 to-green-700" onClick={() => onAppOpen?.('contact')} />
-            <AppIcon icon={<Image src="/discord.png" alt="Discord" width={48} height={48} className="w-11 h-11 sm:w-12 sm:h-12 object-contain" priority />} label="Discord" gradient="bg-gradient-to-br from-indigo-500 to-violet-600" onClick={() => window.open('https://discord.com/invite/dnrfSMgCvV','_blank','noopener,noreferrer')} />
-            <AppIcon icon={<Image src="/photos-ios.png" alt="Photos" width={48} height={48} className="w-11 h-11 sm:w-12 sm:h-12 object-contain" priority />} label="Photos" gradient="bg-white" onClick={() => onAppOpen?.('gallery')} />
+            <AppIcon icon={<Image src="/discord.png" alt="Discord" width={48} height={48} className="w-11 h-11 sm:w-12 sm:h-12 object-contain" />} label="Discord" gradient="bg-gradient-to-br from-indigo-500 to-violet-600" onClick={() => window.open('https://discord.com/invite/dnrfSMgCvV','_blank','noopener,noreferrer')} />
+            <AppIcon icon={<Image src="/photos-ios.png" alt="Photos" width={48} height={48} className="w-11 h-11 sm:w-12 sm:h-12 object-contain" />} label="Photos" gradient="bg-white" onClick={() => onAppOpen?.('gallery')} />
           </div>
         </div>
       </div>

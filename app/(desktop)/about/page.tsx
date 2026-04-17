@@ -15,23 +15,26 @@ export const metadata: Metadata = {
     url: "https://dayemadnan.com/about",
   },
   robots: { index: true, follow: true },
-  other: {
-    "script:type=application/ld+json": JSON.stringify({
-      "@context": "https://schema.org",
-      "@type": "Person",
-      name: "Mohammad Dayem Adnan",
-      url: "https://dayemadnan.com/",
-      sameAs: [
-        "https://www.linkedin.com/in/mdayemadnan/",
-        "https://cal.com/madnan"
-      ]
-    })
-  }
+};
+
+const personJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  name: "Mohammad Dayem Adnan",
+  url: "https://dayemadnan.com/",
+  sameAs: [
+    "https://www.linkedin.com/in/mdayemadnan/",
+    "https://cal.com/madnan",
+  ],
 };
 
 export default function AboutSSR() {
   return (
     <article className="max-w-4xl mx-auto p-6 md:p-8 space-y-8 text-[var(--macos-text-secondary)] bg-[var(--macos-bg-secondary)]/80 backdrop-blur supports-[backdrop-filter]:bg-[var(--macos-bg-secondary)]/60 rounded-xl">
+      {/* JSON-LD structured data — passed as script text children (no dangerouslySetInnerHTML). */}
+      <script type="application/ld+json">
+        {JSON.stringify(personJsonLd).replace(/</g, '\\u003c')}
+      </script>
       <header>
         <div className="mb-4 flex justify-start">
           <Image src="/Wanted-Poster.png" alt="Wanted poster of Mohammad Dayem Adnan" width={320} height={400} priority className="w-40 h-auto rounded-lg shadow-lg" />

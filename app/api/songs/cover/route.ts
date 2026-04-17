@@ -5,20 +5,22 @@ import { readFile, stat } from "fs/promises";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const safeName = (name: string) => {
-  // Reject traversal and weird encodings; allow spaces.
-  if (!name || name.includes("..") || name.includes("/") || name.includes("\\")) return null;
-  if (!name.toLowerCase().endsWith(".mp3")) return null;
-  return name;
-};
+const songsDir = path.resolve(process.cwd(), "public", "songs");
+
+export function resolveSongPathFromDir(dir: string, name: string): string | null {
+  if (!name || !name.toLowerCase().endsWith(".mp3")) return null;
+  const resolved = path.resolve(dir, name);
+  // Must be a direct child of the songs directory (no subdirectories, no escape).
+  if (path.dirname(resolved) !== dir) return null;
+  return resolved;
+}
+
+const resolveSongPath = (name: string): string | null => resolveSongPathFromDir(songsDir, name);
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const name = safeName(searchParams.get("name") || "");
-  if (!name) return new NextResponse("Bad Request", { status: 400 });
-
-  const songsDir = path.join(process.cwd(), "public", "songs");
-  const fullPath = path.join(songsDir, name);
+  const fullPath = resolveSongPath(searchParams.get("name") || "");
+  if (!fullPath) return new NextResponse("Bad Request", { status: 400 });
 
   try {
     // Guard against tiny/invalid files
