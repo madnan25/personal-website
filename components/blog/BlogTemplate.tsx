@@ -1,11 +1,12 @@
+import type { ReactNode } from "react";
 import type { BlogPostMeta } from "@/lib/blog";
 
 interface BlogTemplateProps {
   meta: BlogPostMeta;
-  html: string;
+  body: ReactNode;
 }
 
-export default function BlogTemplate({ meta, html }: BlogTemplateProps) {
+export default function BlogTemplate({ meta, body }: BlogTemplateProps) {
   return (
     <article className="max-w-3xl mx-auto">
       <header className="mb-8">
@@ -20,18 +21,7 @@ export default function BlogTemplate({ meta, html }: BlogTemplateProps) {
         </p>
       </header>
 
-      {/*
-        Trust boundary: `html` is produced by `lib/blog/server.ts` at build time
-        from MDX files we author and commit under `content/blog/`. The pipeline
-        (gray-matter → remark → remark-rehype → rehype-stringify) never touches
-        user input and runs only on the server. This is the standard pattern
-        for rendering Markdown content in React.
-      */}
-      <div
-        className="blog-prose"
-        // NOSONAR: see trust-boundary note above — `html` is author-controlled build output, not user input.
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
+      <div className="blog-prose">{body}</div>
     </article>
   );
 }

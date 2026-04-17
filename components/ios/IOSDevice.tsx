@@ -7,6 +7,7 @@ import StatusBar from "./StatusBar";
 import HomeScreen from "./HomeScreen";
 import AppWindow from "./AppWindow";
 import ControlCenter from "./ControlCenter";
+import parse from "html-react-parser";
 import { blogPosts } from "@/lib/blog";
 import BlogTemplate from "@/components/blog/BlogTemplate";
 import AboutContent from "@/components/hero/AboutContent";
@@ -580,7 +581,7 @@ function BlogApp({ initialSlug = null }: { initialSlug?: string | null }) {
           ) : error ? (
             <div className="text-red-500">{error}</div>
           ) : html ? (
-            <BlogTemplate meta={post} html={html} />
+            <BlogTemplate meta={post} body={parse(html)} />
           ) : null}
         </div>
       )}

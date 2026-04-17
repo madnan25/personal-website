@@ -1,6 +1,6 @@
 import { blogPosts } from '@/lib/blog';
 import BlogTemplate from '@/components/blog/BlogTemplate';
-import { getPostHtml } from '@/lib/blog/server';
+import { getPostNode } from '@/lib/blog/server';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
@@ -31,13 +31,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function BlogPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const loaded = await getPostHtml(slug);
+  const loaded = await getPostNode(slug);
   if (!loaded) notFound();
 
   const url = `${SITE_URL}/blog/${slug}`;
-  // Single JSON-LD using schema.org @graph covers both BlogPosting + BreadcrumbList,
-  // producing one real <script type="application/ld+json"> that Google will index.
-  // (metadata.other renders a <meta> tag, which is invalid for structured data.)
   const structuredData = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -64,17 +61,11 @@ export default async function BlogPage({ params }: { params: Promise<{ slug: str
 
   return (
     <>
-      {/*
-        JSON-LD structured data. Content is a plain object serialized with
-        JSON.stringify — no user input, no HTML — so this dangerouslySetInnerHTML
-        use is safe. This is the pattern Next.js documents for JSON-LD.
-      */}
-      <script
-        type="application/ld+json"
-        // NOSONAR: serialized structured data only; no HTML or user input.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
-      <BlogTemplate meta={loaded.meta} html={loaded.html} />
+      {/* JSON-LD structured data — passed as script text children (no dangerouslySetInnerHTML). */}
+      <script type="application/ld+json">
+        {JSON.stringify(structuredData).replace(/</g, '\\u003c')}
+      </script>
+      <BlogTemplate meta={loaded.meta} body={loaded.body} />
     </>
   );
 }

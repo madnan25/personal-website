@@ -13,14 +13,14 @@ const meta: BlogPostMeta = {
 
 describe('BlogTemplate', () => {
   it('renders the title, date, and reading minutes', () => {
-    const html = renderToStaticMarkup(<BlogTemplate meta={meta} html="<p>Hi.</p>" />);
+    const html = renderToStaticMarkup(<BlogTemplate meta={meta} body={<p>Hi.</p>} />);
     expect(html).toContain('Sample Post');
     expect(html).toContain('5 min read');
   });
 
-  it('injects the supplied html inside the blog-prose wrapper', () => {
+  it('renders the provided React body inside the blog-prose wrapper', () => {
     const html = renderToStaticMarkup(
-      <BlogTemplate meta={meta} html="<h2>Heading</h2><p>Body paragraph.</p>" />
+      <BlogTemplate meta={meta} body={<><h2>Heading</h2><p>Body paragraph.</p></>} />
     );
     expect(html).toContain('class="blog-prose"');
     expect(html).toContain('<h2>Heading</h2>');

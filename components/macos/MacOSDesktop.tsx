@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, useCallback, memo } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback, memo } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
+import parse from "html-react-parser";
 import DesktopWallpaper, { GradientBackground } from "./DesktopWallpaper";
 import MenuBar from "./MenuBar";
 import Dock from "./Dock";
@@ -1052,6 +1053,7 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
   const [postHtml, setPostHtml] = useState<string | null>(null);
   const [isLoadingBlocks, setIsLoadingBlocks] = useState(false);
   const [blocksError, setBlocksError] = useState<string | null>(null);
+  const postBody = useMemo(() => (postHtml ? parse(postHtml) : null), [postHtml]);
   useEffect(() => {
     if (mainRef.current) {
       mainRef.current.scrollTop = scrollTop || 0;
@@ -1176,8 +1178,8 @@ function BlogWindow({ selectedId, onSelectedIdChange, scrollTop, onScrollTopChan
           <div className="text-[var(--macos-text-secondary)]">Loading…</div>
         ) : blocksError ? (
           <div className="text-red-500">{blocksError}</div>
-        ) : postHtml ? (
-          <BlogTemplate meta={selected} html={postHtml} />
+        ) : postBody ? (
+          <BlogTemplate meta={selected} body={postBody} />
         ) : null}
       </main>
     </div>

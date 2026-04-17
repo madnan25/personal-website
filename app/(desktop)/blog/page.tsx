@@ -28,16 +28,10 @@ const breadcrumbJsonLd = {
 export default function BlogIndexSSR() {
   return (
     <>
-      {/*
-        JSON-LD structured data. Content is a plain object serialized with
-        JSON.stringify — no user input, no HTML — so this dangerouslySetInnerHTML
-        use is safe. This is the pattern Next.js documents for JSON-LD.
-      */}
-      <script
-        type="application/ld+json"
-        // NOSONAR: serialized structured data only; no HTML or user input.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
-      />
+      {/* JSON-LD structured data — passed as script text children (no dangerouslySetInnerHTML). */}
+      <script type="application/ld+json">
+        {JSON.stringify(breadcrumbJsonLd).replace(/</g, '\\u003c')}
+      </script>
       <article className="max-w-3xl mx-auto p-6 md:p-8">
         <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-[var(--macos-text-primary)] mb-6">Blog</h1>
         <ul className="space-y-4">
