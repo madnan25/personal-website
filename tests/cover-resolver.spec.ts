@@ -2,7 +2,10 @@ import { describe, it, expect } from 'vitest';
 import path from 'path';
 import { resolveSongPathFromDir } from '../app/api/songs/cover/route';
 
-const dir = path.resolve('/tmp/songs');
+// Synthetic absolute path used purely as a string argument to the pure
+// resolveSongPathFromDir function below; no real filesystem access occurs
+// in this test, so we intentionally avoid /tmp (Sonar S5443).
+const dir = path.resolve(process.cwd(), 'fixtures', 'songs');
 
 describe('resolveSongPathFromDir', () => {
   it('accepts a normal .mp3 name', () => {
