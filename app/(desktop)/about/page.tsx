@@ -15,23 +15,34 @@ export const metadata: Metadata = {
     url: "https://dayemadnan.com/about",
   },
   robots: { index: true, follow: true },
-  other: {
-    "script:type=application/ld+json": JSON.stringify({
-      "@context": "https://schema.org",
-      "@type": "Person",
-      name: "Mohammad Dayem Adnan",
-      url: "https://dayemadnan.com/",
-      sameAs: [
-        "https://www.linkedin.com/in/mdayemadnan/",
-        "https://cal.com/madnan"
-      ]
-    })
-  }
+};
+
+const personJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  name: "Mohammad Dayem Adnan",
+  url: "https://dayemadnan.com/",
+  sameAs: [
+    "https://www.linkedin.com/in/mdayemadnan/",
+    "https://cal.com/madnan",
+  ],
 };
 
 export default function AboutSSR() {
   return (
     <article className="max-w-4xl mx-auto p-6 md:p-8 space-y-8 text-[var(--macos-text-secondary)] bg-[var(--macos-bg-secondary)]/80 backdrop-blur supports-[backdrop-filter]:bg-[var(--macos-bg-secondary)]/60 rounded-xl">
+      {/*
+        JSON-LD structured data. Content is a plain object serialized with
+        JSON.stringify — no user input, no HTML — so this dangerouslySetInnerHTML
+        use is safe. This is the pattern Next.js documents for JSON-LD.
+        (Previously emitted via metadata.other, which rendered a <meta> tag;
+        Google only indexes <script type="application/ld+json">.)
+      */}
+      <script
+        type="application/ld+json"
+        // NOSONAR: serialized structured data only; no HTML or user input.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }}
+      />
       <header>
         <div className="mb-4 flex justify-start">
           <Image src="/Wanted-Poster.png" alt="Wanted poster of Mohammad Dayem Adnan" width={320} height={400} priority className="w-40 h-auto rounded-lg shadow-lg" />
