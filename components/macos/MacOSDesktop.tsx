@@ -710,7 +710,7 @@ function AboutWindow({ initialScrollTop = 0, onScrollTopChange, onOpenWindow }: 
           </motion.p>
 
           <motion.div className="flex flex-wrap gap-2 mb-8">
-                  {['CMO', 'Founder', 'Head of Delivery'].map((role) => (
+                  {['Head of Delivery', 'ex-CMO'].map((role) => (
               <span 
                 key={role}
                 className="px-3 py-1 bg-[var(--macos-accent)]/10 text-[var(--macos-accent)] rounded-full text-sm font-medium border border-[var(--macos-accent)]/20"
@@ -732,7 +732,7 @@ function AboutWindow({ initialScrollTop = 0, onScrollTopChange, onOpenWindow }: 
               I’m a builder who loves turning ideas into working systems—brands that resonate, products people use, and campaigns that actually pay for themselves. I’ve managed $1.2M/year in marketing budgets and shipped programs that turn $30k into $2.6M in revenue (~86× ROAS).
             </p>
             <p className="text-lg leading-relaxed text-[var(--macos-text-secondary)]">
-              Right now I wear three hats: CMO at The Vertical, Founder at Voortgang, and Head of Delivery at NettaWorks. I’m happiest when I’m building—applying design thinking, ruthless prioritization, and tight feedback loops to deliver results.
+              Right now I’m Head of Delivery at NettaWorks, getting complex projects cleanly over the line. Previously I was CMO at The Vertical through February 2026, where I built a $100M+ pipeline. I’m happiest when I’m building—applying design thinking, ruthless prioritization, and tight feedback loops to deliver results.
             </p>
           </div>
 
@@ -759,20 +759,6 @@ function AboutWindow({ initialScrollTop = 0, onScrollTopChange, onOpenWindow }: 
               <h3 className="text-xl font-semibold text-[var(--macos-accent)] mb-4">Current Focus</h3>
               <div className="space-y-3">
                 <div className="flex items-start space-x-3">
-                  <span className="text-lg">🏔️</span>
-                  <div>
-                    <div className="font-medium text-[var(--macos-text-primary)]">Chief Marketing Officer, The Vertical</div>
-                    <div className="text-sm text-[var(--macos-text-secondary)]">Scaling brand equity and pipeline</div>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <span className="text-lg">🧰</span>
-                  <div>
-                    <div className="font-medium text-[var(--macos-text-primary)]">Founder, Voortgang</div>
-                    <div className="text-sm text-[var(--macos-text-secondary)]">Building practical, innovative tools and experiences</div>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
                   <span className="text-lg">🚀</span>
                   <div>
                     <div className="font-medium text-[var(--macos-text-primary)]">Head of Delivery, NettaWorks</div>
@@ -787,6 +773,7 @@ function AboutWindow({ initialScrollTop = 0, onScrollTopChange, onOpenWindow }: 
             <h3 className="text-xl font-semibold text-[var(--macos-accent)] mb-4">Selected Wins</h3>
             <div className="space-y-2">
               {[
+                '$100M+ pipeline built as CMO at The Vertical',
                 '$1.2M annual budget managed across brand, performance, and content',
                 '$30k → $2.6M campaign outcome (~86× ROAS) with disciplined creative + media ops',
                 'Best Real Estate Brand — helped The Vertical win at Global Digital Awards',

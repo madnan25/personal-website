@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://dayemadnan.com"),
   title: "Mohammad Dayem Adnan — Builder of teams, products, and wins",
-  description: "I build teams, products, and repeatable wins. CMO at The Vertical, Founder at Voortgang, and Head of Delivery at NettaWorks—combining design thinking and ruthless prioritization to deliver results.",
+  description: "I build teams, products, and repeatable wins. Head of Delivery at NettaWorks and ex-CMO of The Vertical (built a $100M+ pipeline)—combining design thinking and ruthless prioritization to deliver results.",
   icons: {
     icon: [
       { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
@@ -33,14 +33,14 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Mohammad Dayem Adnan — Builder of teams, products, and wins",
-    description: "I build teams, products, and repeatable wins. CMO at The Vertical, Founder at Voortgang, and Head of Delivery at NettaWorks—combining design thinking and ruthless prioritization to deliver results.",
+    description: "I build teams, products, and repeatable wins. Head of Delivery at NettaWorks and ex-CMO of The Vertical (built a $100M+ pipeline)—combining design thinking and ruthless prioritization to deliver results.",
     type: "website",
     url: "https://dayemadnan.com/",
   },
   twitter: {
     card: "summary_large_image",
     title: "Mohammad Dayem Adnan — Builder of teams, products, and wins",
-    description: "I build teams, products, and repeatable wins. CMO at The Vertical, Founder at Voortgang, and Head of Delivery at NettaWorks—combining design thinking and ruthless prioritization to deliver results.",
+    description: "I build teams, products, and repeatable wins. Head of Delivery at NettaWorks and ex-CMO of The Vertical (built a $100M+ pipeline)—combining design thinking and ruthless prioritization to deliver results.",
   },
 };
 
