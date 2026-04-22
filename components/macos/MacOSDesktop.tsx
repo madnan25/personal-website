@@ -60,8 +60,7 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
   // Desktop shortcut positions (session memory)
   const [shortcutPositions, setShortcutPositions] = useState<{ [key: string]: { left: number; top: number } }>({
     "the-vertical": { left: 24, top: 80 },
-    "voortgang": { left: 24, top: 210 },
-    "nettaworks": { left: 24, top: 340 },
+    "nettaworks": { left: 24, top: 210 },
   });
 
   const updateShortcut = useCallback((id: string, pos: { left: number; top: number }) => {
@@ -396,14 +395,6 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
           onOpen={() => window.open("https://thevertical.pk", "_blank", "noopener,noreferrer")}
         />
         <DesktopShortcut
-          icon={<Image src="/voortgang.png" alt="Voortgang logo" width={56} height={56} draggable={false} />}
-          label="Voortgang"
-          left={shortcutPositions["voortgang"].left}
-          top={shortcutPositions["voortgang"].top}
-          onMove={(pos) => updateShortcut("voortgang", pos)}
-          onOpen={() => window.open("https://voortgang.io", "_blank", "noopener,noreferrer")}
-        />
-        <DesktopShortcut
           icon={<Image src="/nettaworks.png" alt="NettaWorks logo" width={46} height={46} draggable={false} />}
           label="NettaWorks"
           left={shortcutPositions["nettaworks"].left}
@@ -415,7 +406,7 @@ function MacOSDesktopInner({ initialSelectedBlogId, initialOpenWindow }: { initi
           icon={<Image src="/discord.png" alt="Discord" width={48} height={48} draggable={false} />}
           label="Discord"
           left={shortcutPositions["discord"]?.left ?? 24}
-          top={shortcutPositions["discord"]?.top ?? 470}
+          top={shortcutPositions["discord"]?.top ?? 340}
           onMove={(pos) => updateShortcut("discord", pos)}
           onOpen={() => window.open("https://discord.com/invite/dnrfSMgCvV", "_blank", "noopener,noreferrer")}
         />
